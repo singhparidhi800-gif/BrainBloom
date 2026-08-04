@@ -8,7 +8,7 @@ st.set_page_config(page_title="BrainBloom - AI Didi", page_icon="✨", layout="c
 # 2. SECRETS SE KEY UTHAO
 API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
+model = genai.GenerativeModel('gemini-pro')
 
 # 3. AI DIDID KA FUNCTION BANAYA
 def get_ai_answer(doubt, language):
