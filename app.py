@@ -1,8 +1,31 @@
 import streamlit as st
 import random
 from datetime import datetime
+import google.generativeai as genai # 1. YE NAYA ADD KIYA
 
 st.set_page_config(page_title="BrainBloom - AI Didi", page_icon="✨", layout="centered")
+
+# 2. SECRETS SE KEY UTHAO
+API_KEY = st.secrets["GEMINI_API_KEY"]
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+# 3. AI DIDID KA FUNCTION BANAYA
+def get_ai_answer(doubt, language):
+    if language == "Hindi":
+        prompt = f"""
+        Tum "AI Doubt Didi" ho. Ek friendly teacher ho jo 6th se 12th tak ke bachchon ko padhati ho.
+        Jawab Hindi me do, simple words me, example ke saath. 4-5 line me khatam karo.
+        Student ka sawaal: {doubt}
+        """
+    else:
+        prompt = f"""
+        You are "AI Doubt Didi". A friendly teacher for 6th to 12th students.
+        Answer in simple English, with an example. Keep it short, 4-5 lines.
+        Student's question: {doubt}
+        """
+    response = model.generate_content(prompt)
+    return response.text
 
 # Language Dictionary
 LANG = {
@@ -85,7 +108,7 @@ if page == txt["menu"][0]:
 elif page == txt["menu"][1]:
     st.subheader(txt["video_title"])
     topic = st.text_input(txt["video_placeholder"])
-    
+
     if st.button(txt["video_btn"]):
         if topic:
             st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") # Demo
@@ -104,57 +127,50 @@ elif page == txt["menu"][2]:
     st.subheader(txt["notes_title"])
     subject = st.selectbox(txt["subject"], ["Science", "Math", "History", "English"])
     topic = st.text_input(txt["topic"])
-    
+
     if st.button(txt["notes_btn"]):
         if topic:
             st.balloons()
             head = f"### Super Short Notes: {topic}" if language=="English" else f"### {topic} ke Super Short Notes"
             st.success(head)
-            
+
             if language=="English":
                 st.write(f"**Definition:** {topic} is a very important topic in {subject}")
                 st.write("**3 Key Points:**")
                 st.write("1. Basic concept")
-                st.write("2. Formula/Example") 
+                st.write("2. Formula/Example")
                 st.write("3. How it comes in exam")
                 st.write("**Memory Trick:** Make a story from first letters 😄")
             else:
                 st.write(f"**Definition:** {topic} {subject} ka bahut important topic hai")
                 st.write("**3 Key Points:**")
                 st.write("1. Basic concept")
-                st.write("2. Formula/Example") 
+                st.write("2. Formula/Example")
                 st.write("3. Exam me kaise aayega")
                 st.write("**Yaad rakhne ki Trick:** Pehle akshar se story banao 😄")
-            
+
             content = f"{topic} Notes\n1. Basic\n2. Example\n3. Exam Tips"
             st.download_button(txt["download"], content, file_name=f"{topic}.txt")
         else:
             err = "Please enter a topic" if language=="English" else "Topic likho tabhi jadu hoga"
             st.error(err)
 
-# 4. AI DOUBT 24*7
+# 4. AI DOUBT 24*7 - AB YE ASLI AI HAI
 elif page == txt["menu"][3]:
     st.subheader(txt["doubt_title"])
     doubt = st.text_area(txt["doubt_placeholder"])
-    
+
     if st.button(txt["doubt_btn"]):
         if doubt:
             q = "Your Doubt:" if language=="English" else "Tumhara Doubt:"
             a = "AI Didi's Answer:" if language=="English" else "AI Didi ka Jawab:"
             st.info(f"**{q}** {doubt}")
+
+            with st.spinner("Didi soch rahi hai... 5 sec" if language=="Hindi" else "Didi is thinking... 5 sec"):
+                answer = get_ai_answer(doubt, language) # 4. YAHAN ASLI AI CALL HUA
+
             st.success(f"**{a}**")
-            
-            if language=="English":
-                st.write("1. First understand what it means")
-                st.write("2. Let's take a small example")
-                st.write("3. Solve it step by step")
-                st.write("4. If still doubt, write 'explain more'")
-            else:
-                st.write("1. Pehle iska matlab samjho")
-                st.write("2. Chota example lete hai")
-                st.write("3. Step by step solve karte hai")
-                st.write("4. Agar fir doubt ho to 'aur detail' likh do")
-            
+            st.write(answer) # ASLI JAWAB YAHAN
             st.caption(f"Answered at: {datetime.now().strftime('%I:%M %p')}")
         else:
             warn = "Please ask your doubt Didi is waiting 💜" if language=="English" else "Doubt likho didi, main wait kar rahi hu 💜"
