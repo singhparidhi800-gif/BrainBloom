@@ -2,10 +2,10 @@ import streamlit as st
 import random
 from datetime import datetime
 from groq import Groq
-from gTTS import gTTS
 import time
 from PIL import Image
 from fpdf import FPDF
+import streamlit.components.v1 as components # VOICE KE LIYE
 
 st.set_page_config(page_title="BrainBloom - EduGenie", page_icon="✨", layout="wide")
 
@@ -47,7 +47,7 @@ LANG = {
         "menu": ["🏠 Home", "🎥 AI Video Class", "📝 Magic Notes", "❓ AI Doubt 24*7", "📝 AI Test", "⏰ Study Timer"],
         "welcome": "Hello Future Topper! 🌸", "name": "What's your name?", "start": "Let's Start Learning", "logout": "Change Name",
         "video_title": "🎥 AI Video Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Video", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video",
-        "notes_title": "📝 Magic Notes - 1 Page = Full Chapter", "subject": "Choose Subject/Exam", "topic": "Enter Topic or Upload Photo", "notes_btn": "Create Magic Notes ✨", "important_btn": "🔥 Show Important Only", "pdf_btn": "📥 Download PDF", "upload": "Upload Notes Photo",
+        "notes_title": "📝 Magic Notes - 1 Page = Full Chapter", "subject": "Choose Subject/Exam", "topic": "Enter Topic or Upload Photo", "notes_btn": "Create Magic Notes ✨", "important_btn": "🔥 Show Important Only", "pdf_btn": "📥 Download PDF", "upload": "Upload Notes Photo", "download": "📥 Download TXT",
         "doubt_title": "❓ AI Doubt Solver - EduGenie Online 24*7", "doubt_placeholder": "Ask any doubt... from 6th to UPSC 😴", "doubt_btn": "Get Answer Now",
         "test_title": "📝 AI Test Series", "test_btn": "Generate 5 Questions",
         "timer_title": "⏰ Study Timer"
@@ -57,14 +57,21 @@ LANG = {
         "menu": ["🏠 Home", "🎥 AI Video Class", "📝 Notes ka Jadu", "❓ AI Doubt 24*7", "📝 AI Test", "⏰ Study Timer"],
         "welcome": "Namaste Future Topper! 🌸", "name": "Apna naam batao", "start": "Shuru Karein", "logout": "Naam Badlo",
         "video_title": "🎥 AI Video Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Video Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo",
-        "notes_title": "📝 Notes ka Jadu - 1 Page = Pura Chapter", "subject": "Subject/Exam chuno", "topic": "Topic likho ya Photo upload karo", "notes_btn": "Jadu se Notes Banao ✨", "important_btn": "🔥 Sirf Important Dikhao", "pdf_btn": "📥 PDF Download karo", "upload": "Notes ki Photo Upload karo",
+        "notes_title": "📝 Notes ka Jadu - 1 Page = Pura Chapter", "subject": "Subject/Exam chuno", "topic": "Topic likho ya Photo upload karo", "notes_btn": "Jadu se Notes Banao ✨", "important_btn": "🔥 Sirf Important Dikhao", "pdf_btn": "📥 PDF Download karo", "upload": "Notes ki Photo Upload karo", "download": "📥 TXT Download karo",
         "doubt_title": "❓ AI Doubt Solver - EduGenie 24 Ghante Online", "doubt_placeholder": "Koi bhi doubt... 6th se UPSC tak 😴", "doubt_btn": "Abhi Jawab Do",
         "test_title": "📝 AI Test Series", "test_btn": "5 Sawaal Banao",
         "timer_title": "⏰ Study Timer"
     }
 }
 
-st.markdown("""<style>.stButton>button {background: linear-gradient(90deg, #8A2BE2, #FF1493); color: white; border-radius: 12px; font-weight: bold; border: none; padding: 10px 20px;} h1 {color: #8A2BE2; text-align: center;}</style>""", unsafe_allow_html=True)
+# --- SUNDAR CSS ADD KIYA ---
+st.markdown("""<style>
+.stApp {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);}
+.stButton>button {background: linear-gradient(90deg, #FF6B9D, #C44569); color: white; border-radius: 15px; font-weight: bold; border: none; padding: 12px 25px; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s;}
+.stButton>button:hover {transform: scale(1.05);}
+h1 {color: white; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);}
+.stTextInput>div>div>input {border-radius: 10px;}
+</style>""", unsafe_allow_html=True)
 
 col1, col2 = st.columns([4,1])
 with col2: language = st.selectbox("🌐", ["English", "Hindi"], label_visibility="collapsed")
@@ -98,11 +105,22 @@ elif st.session_state.page == "Video":
     if st.button(txt["video_btn"]):
         if topic:
             with st.spinner("EduGenie is creating video... 20 sec"):
-                script = get_ai_answer(f"Explain {topic} in 3 points for students in {language}. Simple.", language)
+                script = get_ai_answer(f"Explain {topic} in 3 simple points for students in {language}.", language)
                 points = [p for p in script.split('\n') if p.strip()][:3]
-                tts = gTTS(text=script, lang='hi' if language=="Hindi" else 'en'); tts.save("audio.mp3")
-            st.success("✨ Video Ready!"); st.audio("audio.mp3", autoplay=True); st.markdown(f"**{txt['motivation']}**")
-            for i, point in enumerate(points): st.image(get_ai_image(f"{topic} - {point}"), caption=f"Step {i+1}"); time.sleep(1)
+
+            st.success("✨ Video Ready!")
+            st.markdown(f"**📢 AI Teacher:** {script}")
+
+            # --- NAYA VOICE CODE - BINA gTTS ---
+            lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
+            js_code = f"""<script>var msg = new SpeechSynthesisUtterance(`{script}`); msg.lang = '{lang_code}'; msg.rate = 0.9; msg.pitch = 1.1; window.speechSynthesis.speak(msg);</script>"""
+            components.html(js_code, height=0) # YE BOLEGA
+
+            st.markdown(f"**{txt['motivation']}**")
+            for i, point in enumerate(points):
+                st.image(get_ai_image(f"{topic} - {point}"), caption=f"Step {i+1}")
+                time.sleep(1)
+
             if st.button(txt["notes_btn_video"]): st.session_state.video_topic = topic; st.session_state.page = "Notes"; st.rerun()
         else: st.error("Enter topic first")
 
