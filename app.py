@@ -6,6 +6,7 @@ import time
 from PIL import Image
 from fpdf import FPDF
 import streamlit.components.v1 as components
+import webbrowser # NAYA
 
 st.set_page_config(page_title="BrainBloom - EduGenie", page_icon="✨", layout="wide")
 
@@ -19,6 +20,7 @@ if 'video_ready' not in st.session_state: st.session_state.video_ready = False
 if 'script' not in st.session_state: st.session_state.script = ""
 if 'points' not in st.session_state: st.session_state.points = []
 if 'slide_index' not in st.session_state: st.session_state.slide_index = 0
+if 'yt_links' not in st.session_state: st.session_state.yt_links = [] # NAYA
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -34,6 +36,14 @@ def create_pdf(notes, topic):
     pdf = FPDF(); pdf.add_page(); pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"BrainBloom Notes: {topic}", ln=True, align='C'); pdf.multi_cell(0, 10, txt=notes)
     pdf.output(f"{topic}.pdf"); return f"{topic}.pdf"
+
+# NAYA FUNCTION - YOUTUBE SEARCH
+def get_youtube_videos(topic):
+    return [
+        f"https://www.youtube.com/results?search_query={topic}+explained+in+hindi",
+        f"https://www.youtube.com/results?search_query={topic}+animated+video",
+        f"https://www.youtube.com/results?search_query={topic}+class+10"
+    ]
 
 def study_timer():
     placeholder = st.empty()
@@ -57,7 +67,7 @@ LANG = {
     "English": {
         "title": "✨ BrainBloom", "caption": "Powered by EduGenie - Learn Anything",
         "welcome": "Hello Future Topper! 🌸", "name": "What's your name?", "start": "Let's Start Learning", "logout": "Change Name",
-        "video_title": "🎥 AI Video Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Video", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video",
+        "video_title": "🎥 AI Video Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Video", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video", "yt_title": "📺 Learn More from YouTube Top Teachers:",
         "notes_title": "📝 Magic Notes - 1 Page = Full Chapter", "subject": "Choose Subject/Exam", "topic": "Enter Topic", "notes_btn": "Create Magic Notes ✨", "important_btn": "🔥 Show Important Only", "pdf_btn": "📥 Download PDF", "download": "📥 Download TXT",
         "doubt_title": "❓ AI Doubt Solver", "doubt_placeholder": "Ask any doubt...", "doubt_btn": "Get Answer Now",
         "test_title": "📝 AI Test Series", "test_btn": "Generate 5 Questions",
@@ -66,7 +76,7 @@ LANG = {
     "Hindi": {
         "title": "✨ BrainBloom", "caption": "EduGenie ke saath - Kuch bhi Seekho",
         "welcome": "Namaste Future Topper! 🌸", "name": "Apna naam batao", "start": "Shuru Karein", "logout": "Naam Badlo",
-        "video_title": "🎥 AI Video Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Video Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo",
+        "video_title": "🎥 AI Video Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Video Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo", "yt_title": "📺 Ab YouTube ke Top Teachers se bhi seekho:",
         "notes_title": "📝 Notes ka Jadu - 1 Page = Pura Chapter", "subject": "Subject/Exam chuno", "topic": "Topic likho", "notes_btn": "Jadu se Notes Banao ✨", "important_btn": "🔥 Sirf Important Dikhao", "pdf_btn": "📥 PDF Download karo", "download": "📥 TXT Download karo",
         "doubt_title": "❓ AI Doubt Solver", "doubt_placeholder": "Koi bhi doubt...", "doubt_btn": "Abhi Jawab Do",
         "test_title": "📝 AI Test Series", "test_btn": "5 Sawaal Banao",
@@ -81,6 +91,7 @@ st.markdown("""<style>
 .stButton>button:hover {background: #87CEEB; color: #000;}
 h1, h2, h3 {color: #000; text-align: center;}
 .stTextInput>div>div>input {border-radius: 10px; border: 2px solid #000;}
+a {color: #0000EE; font-weight: bold;}
 </style>""", unsafe_allow_html=True)
 
 col1, col2 = st.columns([4,1])
@@ -109,7 +120,7 @@ if st.session_state.page == "Home":
         with col3:
             if st.button("❓ AI Doubt", use_container_width=True): st.session_state.page = "Doubt"; st.rerun()
 
-# --- VIDEO PAGE - AB AUTO SLIDESHOW + VOICE + TEXT ---
+# --- VIDEO PAGE - 5 SLIDES + YOUTUBE ---
 elif st.session_state.page == "Video":
     if st.button("🏠 Back to Home"):
         st.session_state.page = "Home";
@@ -121,56 +132,67 @@ elif st.session_state.page == "Video":
     if st.button(txt["video_btn"]) and not st.session_state.video_ready:
         if topic:
             with st.spinner("EduGenie is creating video... 20 sec"):
-                script = get_ai_answer(f"Explain {topic} in 3 simple points for students in {language}.", language)
-                points = [p for p in script.split('\n') if p.strip()][:3]
+                script = get_ai_answer(f"Explain {topic} in 5 simple points for students in {language}. Each point 1 line only.", language)
+                points = [p.strip('- ').strip() for p in script.split('\n') if p.strip()][:5]
                 st.session_state.script = script
                 st.session_state.points = points
+                st.session_state.yt_links = get_youtube_videos(topic) # YT LINK SAVE
                 st.session_state.video_ready = True
                 st.session_state.slide_index = 0
             st.rerun()
         else: st.error("Enter topic first")
 
     if st.session_state.video_ready:
-        st.success("✨ Video Playing...")
+        st.success(f"✨ BrainBloom Video Playing: {topic}")
 
-        # VIDEO CONTAINER
+        total = len(st.session_state.points)
+        progress = st.progress(0)
         video_container = st.container()
 
         current = st.session_state.slide_index
         point = st.session_state.points[current]
 
         with video_container:
-            # 1. PHOTO
-            st.image(get_ai_image(f"{topic} - {point}"), caption=f"Step {current+1} of 3")
+            st.image(get_ai_image(f"detailed illustration of {topic} - {point}"), use_container_width=True)
+            st.markdown(f"<div style='background:white; padding:25px; border-radius:15px; border:3px solid black; font-size:22px; text-align:center; color:black; min-height:100px;'><b>Step {current+1}: {point}</b></div>", unsafe_allow_html=True)
 
-            # 2. TEXT - NICHE LIKH KE AAYEGA
-            st.markdown(f"<div style='background:white; padding:20px; border-radius:15px; border:3px solid black; font-size:20px; text-align:center; color:black;'><b>{point}</b></div>", unsafe_allow_html=True)
-
-            # 3. VOICE - HAR SLIDE PE ALAG BOLEGA
             lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
             js_code = f"""
             <script>
-            var msg = new SpeechSynthesisUtterance(`{point}`);
-            msg.lang = '{lang_code}'; msg.rate = 0.9;
+            var msg = new SpeechSynthesisUtterance(`Step {current+1}. {point}`);
+            msg.lang = '{lang_code}'; msg.rate = 0.85;
             window.speechSynthesis.speak(msg);
             </script>
             """
             components.html(js_code, height=0)
 
-        # 4 SEC BAAD NEXT SLIDE
-        time.sleep(4)
+        for i in range(6):
+            progress.progress(((current * 6) + i) / (total * 6))
+            time.sleep(1)
+
         st.session_state.slide_index += 1
 
-        if st.session_state.slide_index >= len(st.session_state.points):
+        if st.session_state.slide_index >= total:
+            progress.progress(1.0)
             st.session_state.video_ready = False
             st.session_state.slide_index = 0
-            st.success("🎉 Video Khatam!")
+            st.balloons()
+            st.success("🎉 BrainBloom Video Khatam!")
+
+            # YOUTUBE SUGGESTION
+            st.markdown("---")
+            st.markdown(f"### {txt['yt_title']}")
+            st.markdown(f"1. [🔥 Best Explanation]({st.session_state.yt_links[0]})")
+            st.markdown(f"2. [🎨 Animated Video]({st.session_state.yt_links[1]})")
+            st.markdown(f"3. [⚡ Quick Revision]({st.session_state.yt_links[2]})")
+            st.info("Link par click karke YouTube me khul jayega")
+
             if st.button(txt["notes_btn_video"]):
                 st.session_state.video_topic = topic;
                 st.session_state.page = "Notes";
                 st.rerun()
         else:
-            st.rerun() # NEXT SLIDE KE LIYE
+            st.rerun()
 
 # --- NOTES PAGE ---
 elif st.session_state.page == "Notes":
@@ -183,14 +205,14 @@ elif st.session_state.page == "Notes":
             with st.spinner("Making magic notes..."):
                 notes = get_ai_answer(f"Make 1 page notes on {topic} for {subject}. Heading, 3 Key Points, 1 Example, 1 Memory Trick. {language}", language)
                 diagram_url = get_ai_image(f"Diagram of {topic}")
-            st.markdown(f"<div style='background: #FFFFFF; padding: 25px; border-radius: 15px; border: 3px solid #000000; color: #000; font-size: 16px; line-height: 1.8;'>{notes.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background: #FFFFFF; padding: 25px; border-radius: 15px; border: 3px solid #000; color: #000; font-size: 16px; line-height: 1.8;'>{notes.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
             st.image(diagram_url, caption=f"{topic} Diagram")
             st.download_button(txt["download"], notes, file_name=f"{topic}.txt")
             pdf_file = create_pdf(notes, topic)
             with open(pdf_file, "rb") as f: st.download_button(txt["pdf_btn"], f, file_name=pdf_file)
         else: st.error("Enter topic")
 
-# --- DOUBT, TEST, TIMER PAGE WAHI ---
+# --- DOUBT PAGE ---
 elif st.session_state.page == "Doubt":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["doubt_title"]); doubt = st.text_area(txt["doubt_placeholder"])
@@ -201,6 +223,7 @@ elif st.session_state.page == "Doubt":
                 answer = get_ai_answer(f"You are EduGenie. Answer: {doubt}. {language}", language)
             st.success("**EduGenie's Answer:**"); st.write(answer)
 
+# --- TEST PAGE ---
 elif st.session_state.page == "Test":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["test_title"]); topic = st.text_input("Topic for Test:")
@@ -209,6 +232,7 @@ elif st.session_state.page == "Test":
             test = get_ai_answer(f"Make 5 MCQs on {topic}. Format: Q1. Question? A) B) C) D) Answer: B. {language}", language)
         st.write(test)
 
+# --- TIMER PAGE ---
 elif st.session_state.page == "Timer":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["timer_title"]); study_timer()
