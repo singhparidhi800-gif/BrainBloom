@@ -68,7 +68,7 @@ LANG = {
     "English": {
         "title": "✨ BrainBloom", "caption": "Powered by EduGenie - Learn Anything",
         "welcome": "Hello Future Topper! 🌸", "name": "What's your name?", "start": "Let's Start Learning", "logout": "Change Name",
-        "video_title": "🎥 AI Video Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Video", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video", "yt_title": "📺 Learn More from YouTube Top Teachers:",
+        "video_title": "🎥 AI Visual Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Video", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video", "yt_title": "📺 Learn More from YouTube Top Teachers:",
         "notes_title": "📝 Magic Notes - 1 Page = Full Chapter", "subject": "Choose Subject/Exam", "topic": "Enter Topic", "notes_btn": "Create Magic Notes ✨", "important_btn": "🔥 Show Important Only", "pdf_btn": "📥 Download PDF", "download": "📥 Download TXT",
         "doubt_title": "❓ AI Doubt Solver", "doubt_placeholder": "Ask any doubt...", "doubt_btn": "Get Answer Now",
         "test_title": "📝 AI Test Series", "test_btn": "Generate 5 Questions",
@@ -77,7 +77,7 @@ LANG = {
     "Hindi": {
         "title": "✨ BrainBloom", "caption": "EduGenie ke saath - Kuch bhi Seekho",
         "welcome": "Namaste Future Topper! 🌸", "name": "Apna naam batao", "start": "Shuru Karein", "logout": "Naam Badlo",
-        "video_title": "🎥 AI Video Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Video Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo", "yt_title": "📺 Ab YouTube ke Top Teachers se bhi seekho:",
+        "video_title": "🎥 AI Visual Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Video Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo", "yt_title": "📺 Ab YouTube ke Top Teachers se bhi seekho:",
         "notes_title": "📝 Notes ka Jadu - 1 Page = Pura Chapter", "subject": "Subject/Exam chuno", "topic": "Topic likho", "notes_btn": "Jadu se Notes Banao ✨", "important_btn": "🔥 Sirf Important Dikhao", "pdf_btn": "📥 PDF Download karo", "download": "📥 TXT Download karo",
         "doubt_title": "❓ AI Doubt Solver", "doubt_placeholder": "Koi bhi doubt...", "doubt_btn": "Abhi Jawab Do",
         "test_title": "📝 AI Test Series", "test_btn": "5 Sawaal Banao",
