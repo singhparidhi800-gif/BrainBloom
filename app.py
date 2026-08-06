@@ -29,9 +29,12 @@ def get_ai_answer(prompt, language):
     return chat_completion.choices[0].message.content
 
 def get_ai_image(prompt):
-    # URL ENCODE KAR DIYA + FALLBACK
+    # AB 2 LINK RETURN KAREGA - FALLBACK KE LIYE
     safe_prompt = urllib.parse.quote(prompt)
-    return f"https://image.pollinations.ai/prompt/{safe_prompt}, educational diagram, clean white background, bold labels"
+    return [
+        f"https://image.pollinations.ai/prompt/{safe_prompt}, educational diagram, hd, 8k, white background, 1024x512",
+        f"https://picsum.photos/seed/{safe_prompt}/800/400" # YE HAMESHA LOAD HOGI
+    ]
 
 def get_youtube_videos(topic):
     q = urllib.parse.quote(topic)
@@ -68,7 +71,7 @@ LANG = {
     "English": {
         "title": "✨ BrainBloom", "caption": "Powered by EduGenie - Learn Anything",
         "welcome": "Hello Future Topper! 🌸", "name": "What's your name?", "start": "Let's Start Learning", "logout": "Change Name",
-        "video_title": "🎥 AI Visual Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Video", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video", "yt_title": "📺 Learn More from YouTube Top Teachers:",
+        "video_title": "🎨 AI Visual Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Visual Class", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video", "yt_title": "📺 Learn More from YouTube Top Teachers:",
         "notes_title": "📝 Magic Notes - 1 Page = Full Chapter", "subject": "Choose Subject/Exam", "topic": "Enter Topic", "notes_btn": "Create Magic Notes ✨", "important_btn": "🔥 Show Important Only", "pdf_btn": "📥 Download PDF", "download": "📥 Download TXT",
         "doubt_title": "❓ AI Doubt Solver", "doubt_placeholder": "Ask any doubt...", "doubt_btn": "Get Answer Now",
         "test_title": "📝 AI Test Series", "test_btn": "Generate 5 Questions",
@@ -77,7 +80,7 @@ LANG = {
     "Hindi": {
         "title": "✨ BrainBloom", "caption": "EduGenie ke saath - Kuch bhi Seekho",
         "welcome": "Namaste Future Topper! 🌸", "name": "Apna naam batao", "start": "Shuru Karein", "logout": "Naam Badlo",
-        "video_title": "🎥 AI Visual Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Video Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo", "yt_title": "📺 Ab YouTube ke Top Teachers se bhi seekho:",
+        "video_title": "🎨 AI Visual Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Visual Class Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo", "yt_title": "📺 Ab YouTube ke Top Teachers se bhi seekho:",
         "notes_title": "📝 Notes ka Jadu - 1 Page = Pura Chapter", "subject": "Subject/Exam chuno", "topic": "Topic likho", "notes_btn": "Jadu se Notes Banao ✨", "important_btn": "🔥 Sirf Important Dikhao", "pdf_btn": "📥 PDF Download karo", "download": "📥 TXT Download karo",
         "doubt_title": "❓ AI Doubt Solver", "doubt_placeholder": "Koi bhi doubt...", "doubt_btn": "Abhi Jawab Do",
         "test_title": "📝 AI Test Series", "test_btn": "5 Sawaal Banao",
@@ -113,7 +116,7 @@ if st.session_state.page == "Home":
         st.markdown("---"); st.header("Choose Your Weapon ⚔️")
         col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("🎥 AI Video Class", use_container_width=True): st.session_state.page = "Video"; st.session_state.video_ready = False; st.rerun()
+            if st.button("🎨 AI Visual Class", use_container_width=True): st.session_state.page = "Video"; st.session_state.video_ready = False; st.rerun()
             if st.button("📝 AI Test", use_container_width=True): st.session_state.page = "Test"; st.rerun()
         with col2:
             if st.button("📝 Magic Notes", use_container_width=True): st.session_state.page = "Notes"; st.rerun()
@@ -121,7 +124,7 @@ if st.session_state.page == "Home":
         with col3:
             if st.button("❓ AI Doubt", use_container_width=True): st.session_state.page = "Doubt"; st.rerun()
 
-# --- VIDEO PAGE - AB STABLE HAI ---
+# --- AI VISUAL CLASS PAGE - AB PHOTO 100% AAYEGI ---
 elif st.session_state.page == "Video":
     if st.button("🏠 Back to Home"):
         st.session_state.page = "Home";
@@ -131,7 +134,7 @@ elif st.session_state.page == "Video":
 
     if st.button(txt["video_btn"]) and not st.session_state.video_ready:
         if topic:
-            with st.spinner("EduGenie is creating video... 15 sec"):
+            with st.spinner("EduGenie is creating visual class... 15 sec"):
                 script = get_ai_answer(f"Explain {topic} in 5 simple points for students in {language}. Each point 1 line.", language)
                 points = [p.strip('- ').strip() for p in script.split('\n') if p.strip()][:5]
                 st.session_state.script = script
@@ -142,22 +145,26 @@ elif st.session_state.page == "Video":
         else: st.error("Enter topic first")
 
     if st.session_state.video_ready:
-        st.success(f"✨ BrainBloom Video: {topic}")
+        st.success(f"✨ BrainBloom Visual Class: {topic}")
 
-        # 1. SAB PHOTO + TEXT EK SAATH - SLIDESHOW NAHI
+        # 1. SAB PHOTO + TEXT EK SAATH - FALLBACK LAGA DIYA
         st.markdown("### 🖼️ Visual Summary")
         for i, point in enumerate(st.session_state.points):
             col1, col2 = st.columns([1,2])
             with col1:
+                img_urls = get_ai_image(f"{topic} {point}")
                 try:
-                    st.image(get_ai_image(f"{topic} {point}"))
+                    st.image(img_urls[0], use_container_width=True) # AI IMAGE
                 except:
-                    st.info("📷 Image loading...")
+                    try:
+                        st.image(img_urls[1], use_container_width=True) # FALLBACK IMAGE
+                    except:
+                        st.markdown("<div style='height:200px; background:#ddd; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:40px;'>📷</div>", unsafe_allow_html=True)
             with col2:
                 st.markdown(f"**Step {i+1}:** {point}")
             st.markdown("---")
 
-        # 2. PURI VOICE EK SAATH - BEECH ME NAHI KATEG
+        # 2. PURI VOICE EK SAATH
         st.markdown("### 📢 AI Teacher Explaining:")
         st.write(st.session_state.script)
         lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
@@ -173,7 +180,7 @@ elif st.session_state.page == "Video":
 
         if st.button(txt["notes_btn_video"]):
             st.session_state.video_topic = topic;
-            st.session_state.video_ready = False; # RESET
+            st.session_state.video_ready = False;
             st.session_state.page = "Notes";
             st.rerun()
 
@@ -189,7 +196,7 @@ elif st.session_state.page == "Notes":
         if topic:
             with st.spinner("Making magic notes..."):
                 notes = get_ai_answer(f"Make 1 page notes on {topic} for {subject}. Heading, 3 Key Points, 1 Example, 1 Memory Trick. {language}", language)
-                diagram_url = get_ai_image(f"Diagram of {topic}")
+                diagram_url = get_ai_image(f"Diagram of {topic}")[0]
             st.markdown(f"<div style='background: #FFFFFF; padding: 25px; border-radius: 15px; border: 3px solid #000; color: #000; font-size: 16px; line-height: 1.8;'>{notes.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
             st.image(diagram_url, caption=f"{topic} Diagram")
             st.download_button(txt["download"], notes, file_name=f"{topic}.txt")
