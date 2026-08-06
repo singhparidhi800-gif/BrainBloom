@@ -15,6 +15,10 @@ if 'page' not in st.session_state: st.session_state.page = "Home"
 if 'start_time' not in st.session_state: st.session_state.start_time = None
 if 'total_time' not in st.session_state: st.session_state.total_time = 0
 if 'video_topic' not in st.session_state: st.session_state.video_topic = ""
+if 'video_ready' not in st.session_state: st.session_state.video_ready = False
+if 'script' not in st.session_state: st.session_state.script = ""
+if 'points' not in st.session_state: st.session_state.points = []
+if 'slide_index' not in st.session_state: st.session_state.slide_index = 0
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -24,14 +28,13 @@ def get_ai_answer(prompt, language):
     return chat_completion.choices[0].message.content
 
 def get_ai_image(prompt):
-    return f"https://image.pollinations.ai/prompt/{prompt}, educational infographic, clean white background, vibrant colors, labeled diagram, 4k, for students, textbook style"
+    return f"https://image.pollinations.ai/prompt/ultra detailed {prompt}, educational diagram, clean white background, bold black text labels, arrows, vibrant colors, hd, 8k, vector illustration, for students"
 
 def create_pdf(notes, topic):
     pdf = FPDF(); pdf.add_page(); pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"BrainBloom Notes: {topic}", ln=True, align='C'); pdf.multi_cell(0, 10, txt=notes)
     pdf.output(f"{topic}.pdf"); return f"{topic}.pdf"
 
-# --- TIMER FIX - LIVE CHALEGA ---
 def study_timer():
     placeholder = st.empty()
     if st.session_state.start_time is None:
@@ -77,7 +80,7 @@ st.markdown("""<style>
 .stButton>button {background: #000; color: #87CEEB; border-radius: 15px; font-weight: bold; border: 2px solid #87CEEB; padding: 12px 25px; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);}
 .stButton>button:hover {background: #87CEEB; color: #000;}
 h1, h2, h3 {color: #000; text-align: center;}
-.stTextInput>div>div>input {border-radius: 10px; border: 2px solid #000000;}
+.stTextInput>div>div>input {border-radius: 10px; border: 2px solid #000;}
 </style>""", unsafe_allow_html=True)
 
 col1, col2 = st.columns([4,1])
@@ -98,7 +101,7 @@ if st.session_state.page == "Home":
         st.markdown("---"); st.header("Choose Your Weapon ⚔️")
         col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("🎥 AI Video Class", use_container_width=True): st.session_state.page = "Video"; st.rerun()
+            if st.button("🎥 AI Video Class", use_container_width=True): st.session_state.page = "Video"; st.session_state.video_ready = False; st.rerun()
             if st.button("📝 AI Test", use_container_width=True): st.session_state.page = "Test"; st.rerun()
         with col2:
             if st.button("📝 Magic Notes", use_container_width=True): st.session_state.page = "Notes"; st.rerun()
@@ -106,33 +109,70 @@ if st.session_state.page == "Home":
         with col3:
             if st.button("❓ AI Doubt", use_container_width=True): st.session_state.page = "Doubt"; st.rerun()
 
-# --- VIDEO PAGE - PEHLE VOICE PHIR PHOTO ---
+# --- VIDEO PAGE - AB AUTO SLIDESHOW + VOICE + TEXT ---
 elif st.session_state.page == "Video":
-    if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
+    if st.button("🏠 Back to Home"):
+        st.session_state.page = "Home";
+        st.session_state.video_ready = False;
+        st.session_state.slide_index = 0;
+        st.rerun()
     st.subheader(txt["video_title"]); topic = st.text_input(txt["video_placeholder"])
-    if st.button(txt["video_btn"]):
+
+    if st.button(txt["video_btn"]) and not st.session_state.video_ready:
         if topic:
             with st.spinner("EduGenie is creating video... 20 sec"):
                 script = get_ai_answer(f"Explain {topic} in 3 simple points for students in {language}.", language)
                 points = [p for p in script.split('\n') if p.strip()][:3]
-
-            st.success("✨ Video Ready!")
-            st.markdown(f"### 📢 AI Teacher Explaining:")
-            st.write(script)
-            lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
-            js_code = f"""<script>var msg = new SpeechSynthesisUtterance(`{script}`); msg.lang = '{lang_code}'; msg.rate = 0.9; window.speechSynthesis.speak(msg);</script>"""
-            components.html(js_code, height=0)
-
-            st.markdown("---"); st.markdown("### 🖼️ Visual Steps:")
-            for i, point in enumerate(points):
-                st.image(get_ai_image(f"{topic} - {point}"), caption=f"Step {i+1}: {point}")
-                time.sleep(1.5)
-
-            st.markdown(f"**{txt['motivation']}**")
-            if st.button(txt["notes_btn_video"]): st.session_state.video_topic = topic; st.session_state.page = "Notes"; st.rerun()
+                st.session_state.script = script
+                st.session_state.points = points
+                st.session_state.video_ready = True
+                st.session_state.slide_index = 0
+            st.rerun()
         else: st.error("Enter topic first")
 
-# --- NOTES PAGE - READABLE COLOR ---
+    if st.session_state.video_ready:
+        st.success("✨ Video Playing...")
+
+        # VIDEO CONTAINER
+        video_container = st.container()
+
+        current = st.session_state.slide_index
+        point = st.session_state.points[current]
+
+        with video_container:
+            # 1. PHOTO
+            st.image(get_ai_image(f"{topic} - {point}"), caption=f"Step {current+1} of 3")
+
+            # 2. TEXT - NICHE LIKH KE AAYEGA
+            st.markdown(f"<div style='background:white; padding:20px; border-radius:15px; border:3px solid black; font-size:20px; text-align:center; color:black;'><b>{point}</b></div>", unsafe_allow_html=True)
+
+            # 3. VOICE - HAR SLIDE PE ALAG BOLEGA
+            lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
+            js_code = f"""
+            <script>
+            var msg = new SpeechSynthesisUtterance(`{point}`);
+            msg.lang = '{lang_code}'; msg.rate = 0.9;
+            window.speechSynthesis.speak(msg);
+            </script>
+            """
+            components.html(js_code, height=0)
+
+        # 4 SEC BAAD NEXT SLIDE
+        time.sleep(4)
+        st.session_state.slide_index += 1
+
+        if st.session_state.slide_index >= len(st.session_state.points):
+            st.session_state.video_ready = False
+            st.session_state.slide_index = 0
+            st.success("🎉 Video Khatam!")
+            if st.button(txt["notes_btn_video"]):
+                st.session_state.video_topic = topic;
+                st.session_state.page = "Notes";
+                st.rerun()
+        else:
+            st.rerun() # NEXT SLIDE KE LIYE
+
+# --- NOTES PAGE ---
 elif st.session_state.page == "Notes":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["notes_title"])
@@ -143,17 +183,14 @@ elif st.session_state.page == "Notes":
             with st.spinner("Making magic notes..."):
                 notes = get_ai_answer(f"Make 1 page notes on {topic} for {subject}. Heading, 3 Key Points, 1 Example, 1 Memory Trick. {language}", language)
                 diagram_url = get_ai_image(f"Diagram of {topic}")
-            st.markdown(f"<div style='background: #FFFFFF; padding: 25px; border-radius: 15px; border: 3px solid #000000; color: #000000; font-size: 16px; line-height: 1.8;'>{notes.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background: #FFFFFF; padding: 25px; border-radius: 15px; border: 3px solid #000000; color: #000; font-size: 16px; line-height: 1.8;'>{notes.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
             st.image(diagram_url, caption=f"{topic} Diagram")
             st.download_button(txt["download"], notes, file_name=f"{topic}.txt")
             pdf_file = create_pdf(notes, topic)
             with open(pdf_file, "rb") as f: st.download_button(txt["pdf_btn"], f, file_name=pdf_file)
         else: st.error("Enter topic")
-    if st.button(txt["important_btn"]):
-        if topic: st.error(get_ai_answer(f"List only 5 most important points of {topic} from {subject} for exams. {language}", language))
-        else: st.error("Enter topic")
 
-# --- DOUBT PAGE ---
+# --- DOUBT, TEST, TIMER PAGE WAHI ---
 elif st.session_state.page == "Doubt":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["doubt_title"]); doubt = st.text_area(txt["doubt_placeholder"])
@@ -164,7 +201,6 @@ elif st.session_state.page == "Doubt":
                 answer = get_ai_answer(f"You are EduGenie. Answer: {doubt}. {language}", language)
             st.success("**EduGenie's Answer:**"); st.write(answer)
 
-# --- TEST PAGE ---
 elif st.session_state.page == "Test":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["test_title"]); topic = st.text_input("Topic for Test:")
@@ -173,11 +209,9 @@ elif st.session_state.page == "Test":
             test = get_ai_answer(f"Make 5 MCQs on {topic}. Format: Q1. Question? A) B) C) D) Answer: B. {language}", language)
         st.write(test)
 
-# --- TIMER PAGE ---
 elif st.session_state.page == "Timer":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["timer_title"]); study_timer()
     st.metric("Total Study Time Today", f"{int(st.session_state.total_time//3600)}h {int((st.session_state.total_time%3600)//60)}m")
 
-# --- FOOTER FIX - AB ANUGYA HI RAHEGA ---
 st.markdown("---"); st.caption("Made with ❤️ by Anugya | BrainBloom")
