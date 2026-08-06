@@ -1,16 +1,14 @@
 import streamlit as st
 import random
 from datetime import datetime
-import google.generativeai as genai # 1. YE NAYA ADD KIYA
+from groq import Groq # 1. GEMINI HATA KE GROQ LAGAYA
 
 st.set_page_config(page_title="BrainBloom - AI Didi", page_icon="✨", layout="centered")
 
-# 2. SECRETS SE KEY UTHAO
-API_KEY = st.secrets["GEMINI_API_KEY"]
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash-8b-latest')
+# 2. SECRETS SE GROQ KEY UTHAO
+client = Groq(api_key=st.secrets["GROQ_API_KEY"]) # <-- Yaha naam change kiya
 
-# 3. AI DIDID KA FUNCTION BANAYA
+# 3. AI DIDID KA FUNCTION BANAYA - GROQ WALA
 def get_ai_answer(doubt, language):
     if language == "Hindi":
         prompt = f"""
@@ -24,10 +22,14 @@ def get_ai_answer(doubt, language):
         Answer in simple English, with an example. Keep it short, 4-5 lines.
         Student's question: {doubt}
         """
-    response = model.generate_content(prompt)
-    return response.text
+    
+    chat_completion = client.chat.completions.create(
+        messages=[{"role": "user", "content": prompt}],
+        model="llama-3.1-8b-instant", # YE SABSE FAST FREE MODEL HAI
+    )
+    return chat_completion.choices[0].message.content # GROQ KA JAWAB
 
-# Language Dictionary
+# Language Dictionary - YE WAISE HI RAHEGA
 LANG = {
     "English": {
         "title": "✨ BrainBloom - Your AI Didi",
@@ -69,6 +71,7 @@ LANG = {
     }
 }
 
+# Baaki ka saara code waisa hi rahega...
 # Styling
 st.markdown("""
 <style>
@@ -80,7 +83,7 @@ h1 {color: #FF1493;}
 # LANGUAGE SWITCHER - Top Right
 col1, col2 = st.columns([4,1])
 with col2:
-    language = st.selectbox("🌐 Language", ["English", "Hindi"], index=0) # Default English
+    language = st.selectbox("🌐 Language", ["English", "Hindi"], index=0)
 
 txt = LANG[language]
 
@@ -108,16 +111,13 @@ if page == txt["menu"][0]:
 elif page == txt["menu"][1]:
     st.subheader(txt["video_title"])
     topic = st.text_input(txt["video_placeholder"])
-
     if st.button(txt["video_btn"]):
         if topic:
-            st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") # Demo
+            st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
             step1 = "Step 1: Understand the basic concept" if language=="English" else "Step 1: Basic concept samjho"
             step2 = "Step 2: Learn with an example" if language=="English" else "Step 2: Example se samjho"
             step3 = "Step 3: Now you try it" if language=="English" else "Step 3: Khud try karo"
-            st.success(step1)
-            st.success(step2)
-            st.success(step3)
+            st.success(step1); st.success(step2); st.success(step3)
         else:
             err = "Please enter a topic first 😅" if language=="English" else "Pehle topic likho na 😅"
             st.error(err)
@@ -127,28 +127,19 @@ elif page == txt["menu"][2]:
     st.subheader(txt["notes_title"])
     subject = st.selectbox(txt["subject"], ["Science", "Math", "History", "English"])
     topic = st.text_input(txt["topic"])
-
     if st.button(txt["notes_btn"]):
         if topic:
             st.balloons()
             head = f"### Super Short Notes: {topic}" if language=="English" else f"### {topic} ke Super Short Notes"
             st.success(head)
-
             if language=="English":
                 st.write(f"**Definition:** {topic} is a very important topic in {subject}")
-                st.write("**3 Key Points:**")
-                st.write("1. Basic concept")
-                st.write("2. Formula/Example")
-                st.write("3. How it comes in exam")
+                st.write("**3 Key Points:**\n1. Basic concept\n2. Formula/Example\n3. How it comes in exam")
                 st.write("**Memory Trick:** Make a story from first letters 😄")
             else:
                 st.write(f"**Definition:** {topic} {subject} ka bahut important topic hai")
-                st.write("**3 Key Points:**")
-                st.write("1. Basic concept")
-                st.write("2. Formula/Example")
-                st.write("3. Exam me kaise aayega")
+                st.write("**3 Key Points:**\n1. Basic concept\n2. Formula/Example\n3. Exam me kaise aayega")
                 st.write("**Yaad rakhne ki Trick:** Pehle akshar se story banao 😄")
-
             content = f"{topic} Notes\n1. Basic\n2. Example\n3. Exam Tips"
             st.download_button(txt["download"], content, file_name=f"{topic}.txt")
         else:
@@ -159,18 +150,15 @@ elif page == txt["menu"][2]:
 elif page == txt["menu"][3]:
     st.subheader(txt["doubt_title"])
     doubt = st.text_area(txt["doubt_placeholder"])
-
     if st.button(txt["doubt_btn"]):
         if doubt:
             q = "Your Doubt:" if language=="English" else "Tumhara Doubt:"
             a = "AI Didi's Answer:" if language=="English" else "AI Didi ka Jawab:"
             st.info(f"**{q}** {doubt}")
-
             with st.spinner("Didi soch rahi hai... 5 sec" if language=="Hindi" else "Didi is thinking... 5 sec"):
-                answer = get_ai_answer(doubt, language) # 4. YAHAN ASLI AI CALL HUA
-
+                answer = get_ai_answer(doubt, language)
             st.success(f"**{a}**")
-            st.write(answer) # ASLI JAWAB YAHAN
+            st.write(answer)
             st.caption(f"Answered at: {datetime.now().strftime('%I:%M %p')}")
         else:
             warn = "Please ask your doubt Didi is waiting 💜" if language=="English" else "Doubt likho didi, main wait kar rahi hu 💜"
