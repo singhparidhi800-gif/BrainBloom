@@ -6,7 +6,7 @@ import time
 from PIL import Image
 from fpdf import FPDF
 import streamlit.components.v1 as components
-import urllib.parse # NAYA
+import urllib.parse
 
 st.set_page_config(page_title="BrainBloom - EduGenie", page_icon="✨", layout="wide")
 
@@ -20,6 +20,7 @@ if 'video_ready' not in st.session_state: st.session_state.video_ready = False
 if 'script' not in st.session_state: st.session_state.script = ""
 if 'points' not in st.session_state: st.session_state.points = []
 if 'yt_links' not in st.session_state: st.session_state.yt_links = []
+if 'speak' not in st.session_state: st.session_state.speak = True # NAYA
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -28,12 +29,12 @@ def get_ai_answer(prompt, language):
     chat_completion = client.chat.completions.create(messages=[{"role": "user", "content": prompt}], model="llama-3.1-8b-instant")
     return chat_completion.choices[0].message.content
 
-def get_ai_image(prompt):
-    # AB 2 LINK RETURN KAREGA - FALLBACK KE LIYE
+def get_ai_image(prompt, seed):
+    # SEED + DELAY FIX - AB HAR PHOTO ALAG AAYEGI
     safe_prompt = urllib.parse.quote(prompt)
     return [
-        f"https://image.pollinations.ai/prompt/{safe_prompt}, educational diagram, hd, 8k, white background, 1024x512",
-        f"https://picsum.photos/seed/{safe_prompt}/800/400" # YE HAMESHA LOAD HOGI
+        f"https://image.pollinations.ai/prompt/{safe_prompt}?seed={seed}&nologo=true&width=1024&height=512",
+        f"https://picsum.photos/seed/{seed}/800/400"
     ]
 
 def get_youtube_videos(topic):
@@ -53,25 +54,21 @@ def study_timer():
     placeholder = st.empty()
     if st.session_state.start_time is None:
         if placeholder.button("▶️ Start Studying"):
-            st.session_state.start_time = time.time()
-            st.rerun()
+            st.session_state.start_time = time.time(); st.rerun()
     else:
         elapsed = time.time() - st.session_state.start_time
         placeholder.success(f"⏰ Studying for: {int(elapsed//60)} min {int(elapsed%60)} sec")
         if st.button("⏹️ Stop & Save Time"):
-            st.session_state.total_time += elapsed
-            st.session_state.start_time = None
-            st.rerun()
+            st.session_state.total_time += elapsed; st.session_state.start_time = None; st.rerun()
     time.sleep(1)
-    if st.session_state.start_time is not None:
-        st.rerun()
+    if st.session_state.start_time is not None: st.rerun()
 
 # --- LANGUAGE ---
 LANG = {
     "English": {
         "title": "✨ BrainBloom", "caption": "Powered by EduGenie - Learn Anything",
         "welcome": "Hello Future Topper! 🌸", "name": "What's your name?", "start": "Let's Start Learning", "logout": "Change Name",
-        "video_title": "🎨 AI Visual Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Visual Class", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video", "yt_title": "📺 Learn More from YouTube Top Teachers:",
+        "video_title": "🎨 AI Visual Class", "video_placeholder": "Which topic? Ex: Quantum Physics, GST", "video_btn": "Generate AI Visual Class", "motivation": "💪 You got this! One topic at a time.", "notes_btn_video": "📝 Get Notes for this Video", "yt_title": "📺 Learn More from YouTube Top Teachers:", "stop_voice": "🔇 Stop Voice",
         "notes_title": "📝 Magic Notes - 1 Page = Full Chapter", "subject": "Choose Subject/Exam", "topic": "Enter Topic", "notes_btn": "Create Magic Notes ✨", "important_btn": "🔥 Show Important Only", "pdf_btn": "📥 Download PDF", "download": "📥 Download TXT",
         "doubt_title": "❓ AI Doubt Solver", "doubt_placeholder": "Ask any doubt...", "doubt_btn": "Get Answer Now",
         "test_title": "📝 AI Test Series", "test_btn": "Generate 5 Questions",
@@ -80,7 +77,7 @@ LANG = {
     "Hindi": {
         "title": "✨ BrainBloom", "caption": "EduGenie ke saath - Kuch bhi Seekho",
         "welcome": "Namaste Future Topper! 🌸", "name": "Apna naam batao", "start": "Shuru Karein", "logout": "Naam Badlo",
-        "video_title": "🎨 AI Visual Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Visual Class Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo", "yt_title": "📺 Ab YouTube ke Top Teachers se bhi seekho:",
+        "video_title": "🎨 AI Visual Class", "video_placeholder": "Kaunsa topic? Ex: Quantum Physics, GST", "video_btn": "AI Visual Class Banao", "motivation": "💪 Tum kar sakte ho! Ek din, ek topic.", "notes_btn_video": "📝 Is Video ke Notes Lo", "yt_title": "📺 Ab YouTube ke Top Teachers se bhi seekho:", "stop_voice": "🔇 Awaaz Band Karo",
         "notes_title": "📝 Notes ka Jadu - 1 Page = Pura Chapter", "subject": "Subject/Exam chuno", "topic": "Topic likho", "notes_btn": "Jadu se Notes Banao ✨", "important_btn": "🔥 Sirf Important Dikhao", "pdf_btn": "📥 PDF Download karo", "download": "📥 TXT Download karo",
         "doubt_title": "❓ AI Doubt Solver", "doubt_placeholder": "Koi bhi doubt...", "doubt_btn": "Abhi Jawab Do",
         "test_title": "📝 AI Test Series", "test_btn": "5 Sawaal Banao",
@@ -124,54 +121,56 @@ if st.session_state.page == "Home":
         with col3:
             if st.button("❓ AI Doubt", use_container_width=True): st.session_state.page = "Doubt"; st.rerun()
 
-# --- AI VISUAL CLASS PAGE - AB PHOTO 100% AAYEGI ---
+# --- AI VISUAL CLASS PAGE ---
 elif st.session_state.page == "Video":
     if st.button("🏠 Back to Home"):
-        st.session_state.page = "Home";
-        st.session_state.video_ready = False;
-        st.rerun()
+        st.session_state.page = "Home"; st.session_state.video_ready = False; st.rerun()
     st.subheader(txt["video_title"]); topic = st.text_input(txt["video_placeholder"])
 
     if st.button(txt["video_btn"]) and not st.session_state.video_ready:
         if topic:
-            with st.spinner("EduGenie is creating visual class... 15 sec"):
+            with st.spinner("EduGenie is creating visual class..."):
                 script = get_ai_answer(f"Explain {topic} in 5 simple points for students in {language}. Each point 1 line.", language)
                 points = [p.strip('- ').strip() for p in script.split('\n') if p.strip()][:5]
                 st.session_state.script = script
                 st.session_state.points = points
                 st.session_state.yt_links = get_youtube_videos(topic)
                 st.session_state.video_ready = True
+                st.session_state.speak = True
             st.rerun()
         else: st.error("Enter topic first")
 
     if st.session_state.video_ready:
         st.success(f"✨ BrainBloom Visual Class: {topic}")
 
-        # 1. SAB PHOTO + TEXT EK SAATH - FALLBACK LAGA DIYA
+        # VOICE STOP BUTTON
+        if st.button(txt["stop_voice"]):
+            st.session_state.speak = False
+            components.html("""<script>window.speechSynthesis.cancel();</script>""", height=0)
+            st.rerun()
+
         st.markdown("### 🖼️ Visual Summary")
         for i, point in enumerate(st.session_state.points):
             col1, col2 = st.columns([1,2])
             with col1:
-                img_urls = get_ai_image(f"{topic} {point}")
+                img_urls = get_ai_image(f"{topic} {point}", seed=i+random.randint(100,999))
+                time.sleep(0.3) # API BLOCK NA HO
                 try:
-                    st.image(img_urls[0], use_container_width=True) # AI IMAGE
+                    st.image(img_urls[0], use_container_width=True)
                 except:
-                    try:
-                        st.image(img_urls[1], use_container_width=True) # FALLBACK IMAGE
-                    except:
-                        st.markdown("<div style='height:200px; background:#ddd; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:40px;'>📷</div>", unsafe_allow_html=True)
+                    st.image(img_urls[1], use_container_width=True)
             with col2:
                 st.markdown(f"**Step {i+1}:** {point}")
             st.markdown("---")
 
-        # 2. PURI VOICE EK SAATH
         st.markdown("### 📢 AI Teacher Explaining:")
         st.write(st.session_state.script)
-        lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
-        js_code = f"""<script>var msg = new SpeechSynthesisUtterance(`{st.session_state.script}`); msg.lang = '{lang_code}'; msg.rate = 0.9; window.speechSynthesis.speak(msg);</script>"""
-        components.html(js_code, height=0)
 
-        # 3. YOUTUBE SUGGESTION
+        if st.session_state.speak:
+            lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
+            js_code = f"""<script>var msg = new SpeechSynthesisUtterance(`{st.session_state.script}`); msg.lang = '{lang_code}'; msg.rate = 0.9; window.speechSynthesis.speak(msg);</script>"""
+            components.html(js_code, height=0)
+
         st.markdown("---")
         st.markdown(f"### {txt['yt_title']}")
         st.markdown(f"1. [🔥 Best Explanation]({st.session_state.yt_links[0]})")
@@ -184,7 +183,7 @@ elif st.session_state.page == "Video":
             st.session_state.page = "Notes";
             st.rerun()
 
-# --- NOTES PAGE - FIX KIYA ---
+# --- NOTES PAGE ---
 elif st.session_state.page == "Notes":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["notes_title"])
@@ -196,13 +195,13 @@ elif st.session_state.page == "Notes":
         if topic:
             with st.spinner("Making magic notes..."):
                 notes = get_ai_answer(f"Make 1 page notes on {topic} for {subject}. Heading, 3 Key Points, 1 Example, 1 Memory Trick. {language}", language)
-                diagram_url = get_ai_image(f"Diagram of {topic}")[0]
+                diagram_url = get_ai_image(f"Diagram of {topic}", seed=999)[0]
             st.markdown(f"<div style='background: #FFFFFF; padding: 25px; border-radius: 15px; border: 3px solid #000; color: #000; font-size: 16px; line-height: 1.8;'>{notes.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
             st.image(diagram_url, caption=f"{topic} Diagram")
             st.download_button(txt["download"], notes, file_name=f"{topic}.txt")
             pdf_file = create_pdf(notes, topic)
             with open(pdf_file, "rb") as f: st.download_button(txt["pdf_btn"], f, file_name=pdf_file)
-            st.session_state.video_topic = "" # RESET KAR DIYA
+            st.session_state.video_topic = ""
         else: st.error("Enter topic")
 
 # --- DOUBT PAGE ---
