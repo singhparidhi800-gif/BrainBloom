@@ -2,3 +2,4 @@ streamlit
 groq
 gTTS
 Pillow
+fpdf
