@@ -6,7 +6,7 @@ import time
 from PIL import Image
 from fpdf import FPDF
 import streamlit.components.v1 as components
-import webbrowser # NAYA
+import urllib.parse # NAYA
 
 st.set_page_config(page_title="BrainBloom - EduGenie", page_icon="✨", layout="wide")
 
@@ -19,8 +19,7 @@ if 'video_topic' not in st.session_state: st.session_state.video_topic = ""
 if 'video_ready' not in st.session_state: st.session_state.video_ready = False
 if 'script' not in st.session_state: st.session_state.script = ""
 if 'points' not in st.session_state: st.session_state.points = []
-if 'slide_index' not in st.session_state: st.session_state.slide_index = 0
-if 'yt_links' not in st.session_state: st.session_state.yt_links = [] # NAYA
+if 'yt_links' not in st.session_state: st.session_state.yt_links = []
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -30,20 +29,22 @@ def get_ai_answer(prompt, language):
     return chat_completion.choices[0].message.content
 
 def get_ai_image(prompt):
-    return f"https://image.pollinations.ai/prompt/ultra detailed {prompt}, educational diagram, clean white background, bold black text labels, arrows, vibrant colors, hd, 8k, vector illustration, for students"
+    # URL ENCODE KAR DIYA + FALLBACK
+    safe_prompt = urllib.parse.quote(prompt)
+    return f"https://image.pollinations.ai/prompt/{safe_prompt}, educational diagram, clean white background, bold labels"
+
+def get_youtube_videos(topic):
+    q = urllib.parse.quote(topic)
+    return [
+        f"https://www.youtube.com/results?search_query={q}+in+hindi+class",
+        f"https://www.youtube.com/results?search_query={q}+animated+explanation",
+        f"https://www.youtube.com/results?search_query={q}+crash+course"
+    ]
 
 def create_pdf(notes, topic):
     pdf = FPDF(); pdf.add_page(); pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"BrainBloom Notes: {topic}", ln=True, align='C'); pdf.multi_cell(0, 10, txt=notes)
     pdf.output(f"{topic}.pdf"); return f"{topic}.pdf"
-
-# NAYA FUNCTION - YOUTUBE SEARCH
-def get_youtube_videos(topic):
-    return [
-        f"https://www.youtube.com/results?search_query={topic}+explained+in+hindi",
-        f"https://www.youtube.com/results?search_query={topic}+animated+video",
-        f"https://www.youtube.com/results?search_query={topic}+class+10"
-    ]
 
 def study_timer():
     placeholder = st.empty()
@@ -91,7 +92,7 @@ st.markdown("""<style>
 .stButton>button:hover {background: #87CEEB; color: #000;}
 h1, h2, h3 {color: #000; text-align: center;}
 .stTextInput>div>div>input {border-radius: 10px; border: 2px solid #000;}
-a {color: #0000EE; font-weight: bold;}
+a {color: #0000EE; font-weight: bold; font-size: 16px;}
 </style>""", unsafe_allow_html=True)
 
 col1, col2 = st.columns([4,1])
@@ -120,86 +121,70 @@ if st.session_state.page == "Home":
         with col3:
             if st.button("❓ AI Doubt", use_container_width=True): st.session_state.page = "Doubt"; st.rerun()
 
-# --- VIDEO PAGE - 5 SLIDES + YOUTUBE ---
+# --- VIDEO PAGE - AB STABLE HAI ---
 elif st.session_state.page == "Video":
     if st.button("🏠 Back to Home"):
         st.session_state.page = "Home";
         st.session_state.video_ready = False;
-        st.session_state.slide_index = 0;
         st.rerun()
     st.subheader(txt["video_title"]); topic = st.text_input(txt["video_placeholder"])
 
     if st.button(txt["video_btn"]) and not st.session_state.video_ready:
         if topic:
-            with st.spinner("EduGenie is creating video... 20 sec"):
-                script = get_ai_answer(f"Explain {topic} in 5 simple points for students in {language}. Each point 1 line only.", language)
+            with st.spinner("EduGenie is creating video... 15 sec"):
+                script = get_ai_answer(f"Explain {topic} in 5 simple points for students in {language}. Each point 1 line.", language)
                 points = [p.strip('- ').strip() for p in script.split('\n') if p.strip()][:5]
                 st.session_state.script = script
                 st.session_state.points = points
-                st.session_state.yt_links = get_youtube_videos(topic) # YT LINK SAVE
+                st.session_state.yt_links = get_youtube_videos(topic)
                 st.session_state.video_ready = True
-                st.session_state.slide_index = 0
             st.rerun()
         else: st.error("Enter topic first")
 
     if st.session_state.video_ready:
-        st.success(f"✨ BrainBloom Video Playing: {topic}")
+        st.success(f"✨ BrainBloom Video: {topic}")
 
-        total = len(st.session_state.points)
-        progress = st.progress(0)
-        video_container = st.container()
-
-        current = st.session_state.slide_index
-        point = st.session_state.points[current]
-
-        with video_container:
-            st.image(get_ai_image(f"detailed illustration of {topic} - {point}"), use_container_width=True)
-            st.markdown(f"<div style='background:white; padding:25px; border-radius:15px; border:3px solid black; font-size:22px; text-align:center; color:black; min-height:100px;'><b>Step {current+1}: {point}</b></div>", unsafe_allow_html=True)
-
-            lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
-            js_code = f"""
-            <script>
-            var msg = new SpeechSynthesisUtterance(`Step {current+1}. {point}`);
-            msg.lang = '{lang_code}'; msg.rate = 0.85;
-            window.speechSynthesis.speak(msg);
-            </script>
-            """
-            components.html(js_code, height=0)
-
-        for i in range(6):
-            progress.progress(((current * 6) + i) / (total * 6))
-            time.sleep(1)
-
-        st.session_state.slide_index += 1
-
-        if st.session_state.slide_index >= total:
-            progress.progress(1.0)
-            st.session_state.video_ready = False
-            st.session_state.slide_index = 0
-            st.balloons()
-            st.success("🎉 BrainBloom Video Khatam!")
-
-            # YOUTUBE SUGGESTION
+        # 1. SAB PHOTO + TEXT EK SAATH - SLIDESHOW NAHI
+        st.markdown("### 🖼️ Visual Summary")
+        for i, point in enumerate(st.session_state.points):
+            col1, col2 = st.columns([1,2])
+            with col1:
+                try:
+                    st.image(get_ai_image(f"{topic} {point}"))
+                except:
+                    st.info("📷 Image loading...")
+            with col2:
+                st.markdown(f"**Step {i+1}:** {point}")
             st.markdown("---")
-            st.markdown(f"### {txt['yt_title']}")
-            st.markdown(f"1. [🔥 Best Explanation]({st.session_state.yt_links[0]})")
-            st.markdown(f"2. [🎨 Animated Video]({st.session_state.yt_links[1]})")
-            st.markdown(f"3. [⚡ Quick Revision]({st.session_state.yt_links[2]})")
-            st.info("Link par click karke YouTube me khul jayega")
 
-            if st.button(txt["notes_btn_video"]):
-                st.session_state.video_topic = topic;
-                st.session_state.page = "Notes";
-                st.rerun()
-        else:
+        # 2. PURI VOICE EK SAATH - BEECH ME NAHI KATEG
+        st.markdown("### 📢 AI Teacher Explaining:")
+        st.write(st.session_state.script)
+        lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
+        js_code = f"""<script>var msg = new SpeechSynthesisUtterance(`{st.session_state.script}`); msg.lang = '{lang_code}'; msg.rate = 0.9; window.speechSynthesis.speak(msg);</script>"""
+        components.html(js_code, height=0)
+
+        # 3. YOUTUBE SUGGESTION
+        st.markdown("---")
+        st.markdown(f"### {txt['yt_title']}")
+        st.markdown(f"1. [🔥 Best Explanation]({st.session_state.yt_links[0]})")
+        st.markdown(f"2. [🎨 Animated Video]({st.session_state.yt_links[1]})")
+        st.markdown(f"3. [⚡ Quick Revision]({st.session_state.yt_links[2]})")
+
+        if st.button(txt["notes_btn_video"]):
+            st.session_state.video_topic = topic;
+            st.session_state.video_ready = False; # RESET
+            st.session_state.page = "Notes";
             st.rerun()
 
-# --- NOTES PAGE ---
+# --- NOTES PAGE - FIX KIYA ---
 elif st.session_state.page == "Notes":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader(txt["notes_title"])
     all_subjects = ["Science", "Math", "History", "Geography", "Polity", "Economics", "English", "Hindi", "Computer", "Physics", "Chemistry", "Biology", "JEE", "NEET", "UPSC", "SSC", "Banking", "CA"]
-    subject = st.selectbox(txt["subject"], all_subjects); topic = st.text_input(txt["topic"], value=st.session_state.get('video_topic', ''))
+    default_topic = st.session_state.get('video_topic', '')
+    subject = st.selectbox(txt["subject"], all_subjects); topic = st.text_input(txt["topic"], value=default_topic)
+
     if st.button(txt["notes_btn"]):
         if topic:
             with st.spinner("Making magic notes..."):
@@ -210,6 +195,7 @@ elif st.session_state.page == "Notes":
             st.download_button(txt["download"], notes, file_name=f"{topic}.txt")
             pdf_file = create_pdf(notes, topic)
             with open(pdf_file, "rb") as f: st.download_button(txt["pdf_btn"], f, file_name=pdf_file)
+            st.session_state.video_topic = "" # RESET KAR DIYA
         else: st.error("Enter topic")
 
 # --- DOUBT PAGE ---
