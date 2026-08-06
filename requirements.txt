@@ -1,5 +1,5 @@
 streamlit
 groq
-gTTS
+gTTS==2.5.4
 Pillow
-fpdf
+fpdf2
