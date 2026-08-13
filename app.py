@@ -15,7 +15,6 @@ st.set_page_config(page_title="BrainBloom - EduGenie", page_icon="✨", layout="
 LOGO_URL = "https://i.postimg.cc/WD8XXFXD/image.png"
 
 def display_logo(size=140):
-    # CSS Object-fit ensures status bar / time gets cropped automatically, size enlarged to 140px
     st.markdown(f"""
     <div style='text-align: center; margin-bottom: 15px;'>
         <img src='{LOGO_URL}' style='width: {size}px; height: {size}px; object-fit: cover; border-radius: 28px; box-shadow: 0 12px 30px rgba(99, 102, 241, 0.22); border: 3px solid #ffffff;'>
@@ -40,7 +39,7 @@ if 'script' not in st.session_state:
 if 'points' not in st.session_state:
     st.session_state.points = []
 if 'image_urls' not in st.session_state:
-    st.session_state.image_urls = [] # Permanent storage for 2 visual images
+    st.session_state.image_urls = []
 if 'yt_links' not in st.session_state:
     st.session_state.yt_links = []
 if 'speak' not in st.session_state:
@@ -65,7 +64,6 @@ def get_ai_answer(prompt, language):
     return chat_completion.choices[0].message.content
 
 def generate_2_images(topic, points):
-    """ Generates and locks exactly 2 distinct aesthetic image URLs """
     urls = []
     for i, pt in enumerate(points[:2]):
         seed = random.randint(1000, 9999)
@@ -108,10 +106,11 @@ def study_timer():
         if st.session_state.start_time is not None:
             st.rerun()
 
-# --- LANGUAGE DICTIONARY ---
+# --- LANGUAGE DICTIONARY (FIXED: ADDED 'caption' KEY) ---
 LANG = {
     "English": {
         "title": "BrainBloom",
+        "caption": "Your Smart AI Learning Companion 🌸",
         "welcome": "Welcome back, Topper! 🌸",
         "profile_title": "👤 Student Profile & Dashboard",
         "video_title": "🎨 AI Visual Class (2-Step Visuals)",
@@ -137,6 +136,7 @@ LANG = {
     },
     "Hindi": {
         "title": "BrainBloom",
+        "caption": "Aapka Smart AI Learning Saathi 🌸",
         "welcome": "Namaste Future Topper! 🌸",
         "profile_title": "👤 Student Profile & Dashboard",
         "video_title": "🎨 AI Visual Class (2-Step Visuals)",
@@ -162,7 +162,7 @@ LANG = {
     }
 }
 
-# --- ULTRA-AESTHETIC STYLING (GLASSMORPHISM, NO BLACK BORDERS) ---
+# --- ULTRA-AESTHETIC STYLING ---
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
@@ -170,12 +170,10 @@ html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Background Soft Pastel Gradient */
 .stApp {
     background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 40%, #F3E8FF 100%);
 }
 
-/* Glassmorphic Aesthetic Cards - Clean No Harsh Black Outlines */
 .aesthetic-card {
     background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(14px);
@@ -187,7 +185,6 @@ html, body, [class*="css"] {
     margin-bottom: 22px;
 }
 
-/* Modern Gradient Step Badges */
 .step-badge {
     background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
     color: #FFFFFF;
@@ -201,7 +198,6 @@ html, body, [class*="css"] {
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
 }
 
-/* Premium Aesthetic Buttons */
 .stButton>button {
     background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%) !important;
     color: #FFFFFF !important;
@@ -220,13 +216,11 @@ html, body, [class*="css"] {
     background: linear-gradient(135deg, #4338CA 0%, #312E81 100%) !important;
 }
 
-/* Header Aesthetics */
 h1, h2, h3 {
     color: #1E1B4B !important;
     font-weight: 800 !important;
 }
 
-/* Input Fields Soft Border */
 .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
     border-radius: 16px !important;
     border: 1px solid #CBD5E1 !important;
@@ -263,7 +257,6 @@ if st.session_state.page == "Home":
     st.markdown(f"<h1 style='text-align: center; margin-top: -5px; font-size: 38px;'>{txt['title']}</h1>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: #475569; font-weight: 600; font-size: 16px; margin-bottom: 25px;'>{txt['caption']}</p>", unsafe_allow_html=True)
     
-    # Welcome Card & Student Quick Dashboard Button
     st.markdown("<div class='aesthetic-card' style='text-align: center;'>", unsafe_allow_html=True)
     st.markdown(f"### 👋 {txt['welcome']} **{st.session_state.user_name}**")
     
@@ -336,7 +329,7 @@ elif st.session_state.page == "Dashboard":
         st.metric("Current Learning Level", "🌟 Topper Rank")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# --- AI VISUAL CLASS PAGE (UPDATED TO 2 IMAGES ONLY) ---
+# --- AI VISUAL CLASS PAGE ---
 elif st.session_state.page == "Video":
     if st.button("🏠 Back to Home"):
         st.session_state.page = "Home"
@@ -352,7 +345,6 @@ elif st.session_state.page == "Video":
                 script = get_ai_answer(f"Explain {topic} in 2 simple, clear sequential points for students in {language}. Each point exactly 1-2 lines.", language)
                 points = [p.strip('- ').strip() for p in script.split('\n') if p.strip()][:2]
                 
-                # FIX: Lock exactly 2 image URLs permanently into session state
                 image_urls = generate_2_images(topic, points)
                 st.session_state.script = script
                 st.session_state.points = points
@@ -374,7 +366,6 @@ elif st.session_state.page == "Video":
             
         st.markdown("### 🖼️ 2-Step Visual Concept Explanation")
         
-        # Displaying 2 images side-by-side or stacked cleanly
         for i, point in enumerate(st.session_state.points[:2]):
             st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
             col1, col2 = st.columns([1.2, 2])
