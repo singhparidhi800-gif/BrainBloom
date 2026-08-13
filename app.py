@@ -8,28 +8,54 @@ from fpdf import FPDF
 import streamlit.components.v1 as components
 import urllib.parse
 import os
+import json
 
+# Must be first Streamlit command
 st.set_page_config(page_title="BrainBloom - EduGenie", page_icon="✨", layout="wide")
 
-# --- DIRECT LOGO LINK WITH CSS CROP FIX & LARGER SIZE --- #
-LOGO_URL = "https://i.postimg.cc/WD8XXFXD/image.png"
+# --- DATA PERSISTENCE SYSTEM (Fixes Data Loss Issue) ---
+DATA_FILE = "brainbloom_data.json"
 
-def display_logo(size=140):
-    st.markdown(f"""
-    <div style='text-align: center; margin-bottom: 15px;'>
-        <img src='{LOGO_URL}' style='width: {size}px; height: {size}px; object-fit: cover; border-radius: 28px; box-shadow: 0 12px 30px rgba(99, 102, 241, 0.22); border: 3px solid #ffffff;'>
-    </div>
-    """, unsafe_allow_html=True)
+def load_user_data():
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {
+        "user_name": "Future Topper",
+        "total_time": 0,
+        "study_sessions": 0,
+        "streak": 1
+    }
 
-# --- SESSION STATE INITIALIZATION ---
-if 'user_name' not in st.session_state or not st.session_state.user_name:
-    st.session_state.user_name = "Future Topper"
+def save_user_data():
+    data = {
+        "user_name": st.session_state.get("user_name", "Future Topper"),
+        "total_time": st.session_state.get("total_time", 0),
+        "study_sessions": st.session_state.get("study_sessions", 0),
+        "streak": st.session_state.get("streak", 1)
+    }
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f)
+
+# Initialize Session State with Saved Data
+saved_data = load_user_data()
+
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = saved_data.get("user_name", "Future Topper")
+if 'total_time' not in st.session_state:
+    st.session_state.total_time = saved_data.get("total_time", 0)
+if 'study_sessions' not in st.session_state:
+    st.session_state.study_sessions = saved_data.get("study_sessions", 0)
+if 'streak' not in st.session_state:
+    st.session_state.streak = saved_data.get("streak", 1)
+
 if 'page' not in st.session_state:
     st.session_state.page = "Home"
 if 'start_time' not in st.session_state:
     st.session_state.start_time = None
-if 'total_time' not in st.session_state:
-    st.session_state.total_time = 0
 if 'video_topic' not in st.session_state:
     st.session_state.video_topic = ""
 if 'video_ready' not in st.session_state:
@@ -44,10 +70,28 @@ if 'yt_links' not in st.session_state:
     st.session_state.yt_links = []
 if 'speak' not in st.session_state:
     st.session_state.speak = True
-if 'study_sessions' not in st.session_state:
-    st.session_state.study_sessions = 0
 if 'flashcards_data' not in st.session_state:
     st.session_state.flashcards_data = []
+
+# --- DIRECT LOGO LINK WITH CSS SHARPNESS FIX ---
+LOGO_URL = "https://i.postimg.cc/WD8XXFXD/image.png"
+
+def display_logo(size=130):
+    st.markdown(f"""
+    <div style='text-align: center; margin-bottom: 15px;'>
+        <img src='{LOGO_URL}' style='
+            width: {size}px; 
+            height: {size}px; 
+            object-fit: contain; 
+            border-radius: 28px; 
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.25); 
+            border: 3px solid #ffffff;
+            image-rendering: -webkit-optimize-contrast;
+            background-color: #ffffff;
+            padding: 5px;
+        '>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Safe API Client Setup
 groq_key = st.secrets.get("GROQ_API_KEY", "")
@@ -57,17 +101,22 @@ client = Groq(api_key=groq_key) if groq_key else None
 def get_ai_answer(prompt, language):
     if not client:
         return "GROQ API Key missing in Streamlit Secrets!"
-    chat_completion = client.chat.completions.create(
-        messages=[{"role": "user", "content": prompt}],
-        model="llama-3.1-8b-instant"
-    )
-    return chat_completion.choices[0].message.content
+    try:
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.1-8b-instant"
+        )
+        return chat_completion.choices[0].message.content
+    except Exception as e:
+        return f"Error connecting to AI: {str(e)}"
 
+# Fixed 2-Images Generator with Unique Prompt Seeds
 def generate_2_images(topic, points):
     urls = []
-    for i, pt in enumerate(points[:2]):
-        seed = random.randint(1000, 9999)
-        safe_prompt = urllib.parse.quote(f"educational illustration of {topic}, {pt}, clean modern digital vector art, high resolution")
+    for i in range(2):
+        pt_text = points[i] if i < len(points) else f"Step {i+1} overview of {topic}"
+        seed = random.randint(100000, 999999)
+        safe_prompt = urllib.parse.quote(f"educational infographic vector illustration, step {i+1}: {topic}, {pt_text}, high contrast, clean 4k digital art")
         urls.append(f"https://image.pollinations.ai/prompt/{safe_prompt}?seed={seed}&nologo=true&width=800&height=450")
     return urls
 
@@ -76,7 +125,7 @@ def get_youtube_videos(topic):
     return [
         f"https://www.youtube.com/results?search_query={q}+in+hindi+class",
         f"https://www.youtube.com/results?search_query={q}+animated+explanation",
-        f"https://www.youtube.com/results?search_query={q}+crash+course"
+        f"https://www.youtube.com/results?search_query={q}+one+shot+revision"
     ]
 
 def create_pdf(notes, topic):
@@ -84,14 +133,17 @@ def create_pdf(notes, topic):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"BrainBloom Notes: {topic}", ln=True, align='C')
-    pdf.multi_cell(0, 10, txt=notes)
-    pdf.output(f"{topic}.pdf")
-    return f"{topic}.pdf"
+    # Replace non-latin characters if needed
+    clean_notes = notes.encode('latin-1', 'replace').decode('latin-1')
+    pdf.multi_cell(0, 10, txt=clean_notes)
+    file_name = f"{topic.replace(' ', '_')}_Notes.pdf"
+    pdf.output(file_name)
+    return file_name
 
 def study_timer():
     placeholder = st.empty()
     if st.session_state.start_time is None:
-        if placeholder.button("▶️ Start Studying Session", use_container_width=True):
+        if placeholder.button("▶️ Start Focus Session", use_container_width=True):
             st.session_state.start_time = time.time()
             st.rerun()
     else:
@@ -101,23 +153,44 @@ def study_timer():
             st.session_state.total_time += elapsed
             st.session_state.study_sessions += 1
             st.session_state.start_time = None
+            save_user_data() # Save persistently!
             st.rerun()
         time.sleep(1)
         if st.session_state.start_time is not None:
             st.rerun()
 
-# --- LANGUAGE DICTIONARY (FIXED: ADDED 'caption' KEY) ---
+def get_user_rank(seconds):
+    hours = seconds / 3600
+    if hours < 1:
+        return "🐣 Novice Learner"
+    elif hours < 5:
+        return "⚡ Backbencher Se Topper"
+    elif hours < 15:
+        return "🔥 Study Machine"
+    else:
+        return "🧠 Einstein Pro Max"
+
+# --- FUNNY DIALOGUE GENERATOR ---
+FUNNY_MOTIVATIONS = [
+    "Padhle bhai, crush bhi topper ke sath hi baithti hai! 😉",
+    "Dimaag overheat ho raha hai? Thoda paani piyo aur phir dhoom machao! ☕🔥",
+    "Mummy ko bol do: 'Sharma ji ke beta ko bolna ab competition tough hai!' 😎",
+    "Gyaan wo amrit hai jo sirf padhne se milta hai, reels scroll karne se nahi! 📱❌",
+    "Aapka dimaag 100% active hai, bas isko thoda Instagram se door rakho! 🚀"
+]
+
+# --- LANGUAGE DICTIONARY ---
 LANG = {
     "English": {
         "title": "BrainBloom",
         "caption": "Your Smart AI Learning Companion 🌸",
         "welcome": "Welcome back, Topper! 🌸",
-        "profile_title": "👤 Student Profile & Dashboard",
-        "video_title": "🎨 AI Visual Class (2-Step Visuals)",
+        "profile_title": "👤 Student Profile & Saved Progress",
+        "video_title": "🎨 AI Visual Class (2-Step HD Visuals)",
         "video_placeholder": "Enter topic (e.g., Photosynthesis, Black Hole, GST)",
         "video_btn": "Generate 2-Step Visual Class ✨",
         "notes_btn_video": "📝 Generate Notes for this Video",
-        "yt_title": "📺 Recommended Masterclasses:",
+        "yt_title": "📺 Recommended Video Classes:",
         "stop_voice": "🔇 Stop AI Voice",
         "notes_title": "📝 Magic Notes Generator",
         "subject": "Choose Subject/Exam",
@@ -138,7 +211,7 @@ LANG = {
         "title": "BrainBloom",
         "caption": "Aapka Smart AI Learning Saathi 🌸",
         "welcome": "Namaste Future Topper! 🌸",
-        "profile_title": "👤 Student Profile & Dashboard",
+        "profile_title": "👤 Student Profile & Saved Progress",
         "video_title": "🎨 AI Visual Class (2-Step Visuals)",
         "video_placeholder": "Kaunsa topic seekhna hai? (Ex: Quantum Physics, GST)",
         "video_btn": "2-Step AI Visual Class Banao ✨",
@@ -175,12 +248,12 @@ html, body, [class*="css"] {
 }
 
 .aesthetic-card {
-    background: rgba(255, 255, 255, 0.82);
+    background: rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border-radius: 22px;
     padding: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     box-shadow: 0 10px 30px rgba(99, 102, 241, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
     margin-bottom: 22px;
 }
@@ -230,11 +303,6 @@ h1, h2, h3 {
     box-shadow: 0 2px 8px rgba(0,0,0,0.03) !important;
 }
 
-.stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
-    border-color: #6366F1 !important;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
-}
-
 a {
     color: #4F46E5 !important;
     font-weight: 700;
@@ -248,12 +316,12 @@ a:hover {
 # Language Selector
 col_main, col_lang = st.columns([5,1])
 with col_lang:
-    language = st.selectbox("🌐 Language", ["English", "Hindi"], label_visibility="collapsed")
+    language = st.selectbox("🌐 Language", ["Hindi", "English"], label_visibility="collapsed")
 txt = LANG[language]
 
 # --- HOME PAGE ---
 if st.session_state.page == "Home":
-    display_logo(size=140)
+    display_logo(size=130)
     st.markdown(f"<h1 style='text-align: center; margin-top: -5px; font-size: 38px;'>{txt['title']}</h1>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: #475569; font-weight: 600; font-size: 16px; margin-bottom: 25px;'>{txt['caption']}</p>", unsafe_allow_html=True)
     
@@ -262,11 +330,16 @@ if st.session_state.page == "Home":
     
     col_prof1, col_prof2 = st.columns([3, 1])
     with col_prof1:
-        st.write("Ready to bloom your brain today with AI visuals & interactive notes?")
+        st.write(f"Current Level: **{get_user_rank(st.session_state.total_time)}** | Total Focus Time: **{int(st.session_state.total_time//3600)}h {int((st.session_state.total_time%3600)//60)}m**")
     with col_prof2:
         if st.button("👤 Open Dashboard", use_container_width=True):
             st.session_state.page = "Dashboard"
             st.rerun()
+            
+    # Funny Dose Button
+    if st.button("☕ Quick Dose of Funny Motivation"):
+        st.toast(random.choice(FUNNY_MOTIVATIONS), icon="💡")
+        
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<h3 style='text-align: center; margin-top: 20px; margin-bottom: 15px;'>✨ Choose Learning Mode</h3>", unsafe_allow_html=True)
@@ -306,12 +379,13 @@ elif st.session_state.page == "Dashboard":
     st.subheader(txt["profile_title"])
     
     st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
-    st.markdown("### 🎓 Student Info")
+    st.markdown("### 🎓 Student Info & Persistence")
     new_name = st.text_input("Edit Profile Name:", value=st.session_state.user_name)
     if st.button("💾 Save Profile Name"):
         if new_name.strip():
             st.session_state.user_name = new_name.strip()
-            st.success("Profile Name Updated Successfully!")
+            save_user_data() # Persistent Save
+            st.success("Profile Name Saved Permanently! (Ab refresh par bhi nahi mitega)")
             st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
     
@@ -326,7 +400,7 @@ elif st.session_state.page == "Dashboard":
         st.markdown("</div>", unsafe_allow_html=True)
     with col_d3:
         st.markdown("<div class='aesthetic-card' style='text-align: center;'>", unsafe_allow_html=True)
-        st.metric("Current Learning Level", "🌟 Topper Rank")
+        st.metric("Current Rank", get_user_rank(st.session_state.total_time))
         st.markdown("</div>", unsafe_allow_html=True)
 
 # --- AI VISUAL CLASS PAGE ---
@@ -342,8 +416,20 @@ elif st.session_state.page == "Video":
     if st.button(txt["video_btn"]):
         if topic:
             with st.spinner("EduGenie is generating 2 HD visual illustrations..."):
-                script = get_ai_answer(f"Explain {topic} in 2 simple, clear sequential points for students in {language}. Each point exactly 1-2 lines.", language)
-                points = [p.strip('- ').strip() for p in script.split('\n') if p.strip()][:2]
+                prompt = f"Explain {topic} in 2 simple sequential steps for a student in {language}. Format as:\nStep 1: ...\nStep 2: ..."
+                script = get_ai_answer(prompt, language)
+                
+                # Robust extraction to ensure ALWAYS 2 distinct points
+                raw_lines = [p.strip('- 1234567890.').strip() for p in script.split('\n') if len(p.strip()) > 5]
+                if len(raw_lines) >= 2:
+                    points = raw_lines[:2]
+                else:
+                    # Fallback sentence splitting if AI gave single block
+                    sentences = [s.strip() for s in script.split('.') if len(s.strip()) > 5]
+                    if len(sentences) >= 2:
+                        points = sentences[:2]
+                    else:
+                        points = [f"Basic concept and fundamentals of {topic}", f"Key working mechanisms and practical applications of {topic}"]
                 
                 image_urls = generate_2_images(topic, points)
                 st.session_state.script = script
@@ -354,7 +440,7 @@ elif st.session_state.page == "Video":
                 st.session_state.speak = True
                 st.rerun()
         else:
-            st.error("Please enter a topic first")
+            st.error("Please enter a topic first!")
             
     if st.session_state.video_ready:
         st.markdown(f"<h3 style='color: #1E1B4B;'>✨ Visual Class: {topic}</h3>", unsafe_allow_html=True)
@@ -366,15 +452,18 @@ elif st.session_state.page == "Video":
             
         st.markdown("### 🖼️ 2-Step Visual Concept Explanation")
         
-        for i, point in enumerate(st.session_state.points[:2]):
+        # Guarantees rendering of BOTH pictures
+        for i in range(2):
+            point_text = st.session_state.points[i] if i < len(st.session_state.points) else f"Step {i+1} visual concept overview"
+            img_src = st.session_state.image_urls[i] if i < len(st.session_state.image_urls) else "https://picsum.photos/800/450"
+            
             st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
             col1, col2 = st.columns([1.2, 2])
             with col1:
-                img_src = st.session_state.image_urls[i] if i < len(st.session_state.image_urls) else "https://picsum.photos/800/450"
-                st.image(img_src, use_container_width=True, caption=f"Visual {i+1}")
+                st.image(img_src, use_container_width=True, caption=f"HD Visual Step {i+1}")
             with col2:
                 st.markdown(f"<span class='step-badge'>STEP {i+1}</span>", unsafe_allow_html=True)
-                st.markdown(f"<p style='font-size: 18px; font-weight: 600; color: #1E293B; line-height: 1.6;'>{point}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size: 18px; font-weight: 600; color: #1E293B; line-height: 1.6;'>{point_text}</p>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
             
         st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
@@ -383,8 +472,9 @@ elif st.session_state.page == "Video":
         st.markdown("</div>", unsafe_allow_html=True)
         
         if st.session_state.speak:
-            lang_code = 'hi-IN' if language=="Hindi" else 'en-US'
-            js_code = f"""<script>var msg = new SpeechSynthesisUtterance(`{st.session_state.script}`); msg.lang = '{lang_code}'; msg.rate = 0.9; window.speechSynthesis.speak(msg);</script>"""
+            lang_code = 'hi-IN' if language == "Hindi" else 'en-US'
+            clean_script_speech = st.session_state.script.replace("'", "").replace("\n", " ")
+            js_code = f"""<script>var msg = new SpeechSynthesisUtterance('{clean_script_speech}'); msg.lang = '{lang_code}'; msg.rate = 0.9; window.speechSynthesis.speak(msg);</script>"""
             components.html(js_code, height=0)
             
         st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
@@ -407,7 +497,7 @@ elif st.session_state.page == "Notes":
         st.rerun()
         
     st.subheader(txt["notes_title"])
-    all_subjects = ["Science", "Math", "History", "Geography", "Polity", "Economics", "English", "Hindi", "Computer", "Physics", "Chemistry", "Biology", "JEE", "NEET", "UPSC", "SSC", "Banking", "CA"]
+    all_subjects = ["Science", "Math", "History", "Geography", "Polity", "Economics", "English", "Hindi", "Computer", "Physics", "Chemistry", "Biology", "JEE", "NEET", "UPSC", "SSC"]
     default_topic = st.session_state.get('video_topic', '')
     
     st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
@@ -521,4 +611,4 @@ elif st.session_state.page == "Timer":
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
-st.caption("Made with ❤️ by Anugya ")
+st.caption("Made with ❤️ by Anugya | BrainBloom EduGenie v2.0 🌸")
