@@ -14,11 +14,6 @@ import re
 # Must be first Streamlit command
 st.set_page_config(page_title="BrainBloom - EduGenie", page_icon="✨", layout="wide")
 
-# ==========================================
-# 💳 UPI CONFIGURATION
-# ==========================================
-MY_UPI_ID = st.secrets.get("UPI_ID", "anugya@upi")
-
 # --- DATA PERSISTENCE SYSTEM ---
 DATA_FILE = "brainbloom_data.json"
 
@@ -35,7 +30,6 @@ def load_user_data():
         "study_sessions": 0,
         "streak": 1,
         "xp_points": 50,
-        "is_vip": False,
         "diary_secret": "",
         "diary_pin": "",
         "profile_pic": None
@@ -48,7 +42,6 @@ def save_user_data():
         "study_sessions": st.session_state.get("study_sessions", 0),
         "streak": st.session_state.get("streak", 1),
         "xp_points": st.session_state.get("xp_points", 50),
-        "is_vip": st.session_state.get("is_vip", False),
         "diary_secret": st.session_state.get("diary_secret", ""),
         "diary_pin": st.session_state.get("diary_pin", ""),
         "profile_pic": st.session_state.get("profile_pic", None)
@@ -63,7 +56,6 @@ if 'total_time' not in st.session_state: st.session_state.total_time = saved_dat
 if 'study_sessions' not in st.session_state: st.session_state.study_sessions = saved_data.get("study_sessions", 0)
 if 'streak' not in st.session_state: st.session_state.streak = saved_data.get("streak", 1)
 if 'xp_points' not in st.session_state: st.session_state.xp_points = saved_data.get("xp_points", 50)
-if 'is_vip' not in st.session_state: st.session_state.is_vip = saved_data.get("is_vip", False)
 if 'diary_secret' not in st.session_state: st.session_state.diary_secret = saved_data.get("diary_secret", "")
 if 'diary_pin' not in st.session_state: st.session_state.diary_pin = saved_data.get("diary_pin", "")
 if 'profile_pic' not in st.session_state: st.session_state.profile_pic = saved_data.get("profile_pic", None)
@@ -74,8 +66,6 @@ if 'start_time' not in st.session_state: st.session_state.start_time = None
 # Game & Boss Fight State Initialization
 if 'boss_hp' not in st.session_state: st.session_state.boss_hp = 100
 if 'player_hp' not in st.session_state: st.session_state.player_hp = 100
-if 'ttt_board' not in st.session_state: st.session_state.ttt_board = [""] * 9
-if 'ttt_turn' not in st.session_state: st.session_state.ttt_turn = "❌"
 
 # Safe API Client Setup
 groq_key = st.secrets.get("GROQ_API_KEY", "")
@@ -118,7 +108,7 @@ def clean_text_for_speech(text):
     clean = clean.replace('\n', ' ').strip()
     return clean
 
-# --- UNIVERSAL VOICE PLAYER WITH IMPROVED SpeechSynthesis ---
+# --- UNIVERSAL VOICE PLAYER ---
 def render_voice_controls(text_content, key_prefix="default", language="Hindi"):
     col_v1, col_v2 = st.columns([1, 1])
     lang_code = 'hi-IN' if language == "Hindi" else 'en-US'
@@ -133,14 +123,6 @@ def render_voice_controls(text_content, key_prefix="default", language="Hindi"):
                 msg.lang = '{lang_code}';
                 msg.rate = 0.9;
                 msg.pitch = 1.0;
-                
-                var voices = window.speechSynthesis.getVoices();
-                for (var i = 0; i < voices.length; i++) {{
-                    if (voices[i].lang === '{lang_code}' || voices[i].lang.includes('{lang_code.split('-')[0]}')) {{
-                        msg.voice = voices[i];
-                        break;
-                    }}
-                }}
                 window.speechSynthesis.speak(msg);
             </script>
             """
@@ -148,11 +130,7 @@ def render_voice_controls(text_content, key_prefix="default", language="Hindi"):
             
     with col_v2:
         if st.button(f"🔇 Mute Audio", key=f"stop_{key_prefix}"):
-            js_code = """
-            <script>
-                window.speechSynthesis.cancel();
-            </script>
-            """
+            js_code = "<script>window.speechSynthesis.cancel();</script>"
             components.html(js_code, height=0)
 
 # --- AI GENERATOR WITH STRICT LANGUAGE PROMPTS ---
@@ -176,7 +154,7 @@ def generate_2_concept_images(topic, points):
     for i in range(2):
         pt_text = points[i] if i < len(points) else f"Step {i+1} concept"
         seed = random.randint(10000, 99999)
-        clean_prompt = urllib.parse.quote(f"educational illustration diagram, {topic}, {pt_text}, simple clean visual")
+        clean_prompt = urllib.parse.quote(f"hd detailed infographic educational diagram of {topic}, {pt_text}, high quality vector illustration, clean white background")
         urls.append(f"https://image.pollinations.ai/prompt/{clean_prompt}?seed={seed}&nologo=true&width=700&height=400")
     return urls
 
@@ -224,8 +202,7 @@ FUNNY_MOTIVATIONS = [
     "Padhle bhai, crush bhi topper ke sath hi baithti hai! 😉",
     "Dimaag overheat ho raha hai? Thoda paani piyo aur phir dhoom machao! ☕🔥",
     "Mummy ko bol do: 'Sharma ji ke beta ko bolna ab competition tough hai!' 😎",
-    "Gyaan wo amrit hai jo sirf padhne se milta hai, reels scroll karne se nahi! 📱❌",
-    "Aapka dimaag 100% active hai, bas isko thoda Instagram se door rakho! 🚀"
+    "Gyaan wo amrit hai jo sirf padhne se milta hai, reels scroll karne se nahi! 📱❌"
 ]
 
 FORTUNES = [
@@ -234,7 +211,7 @@ FORTUNES = [
     "🔮 Daily Prediction: Class topper aaj aapka score dekh kar chauknay wala hai. Keep Grinding! (+20 XP)"
 ]
 
-# --- VIBRANT & PEACH UI STYLING ---
+# --- VIBRANT & PEACH UI STYLING WITH HIGHLIGHTS ---
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -251,13 +228,15 @@ html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
     color: #2D1A0E !important;
 }
 
-/* Yellow Highlighted Key Lines */
-.aesthetic-card strong, .aesthetic-card b, .boss-card strong {
-    background-color: #FEF08A !important;
+/* Global Bright Yellow Highlight for Important Bold Terms */
+div[data-testid="stMarkdownContainer"] strong,
+div[data-testid="stMarkdownContainer"] b,
+.aesthetic-card strong, .aesthetic-card b {
+    background-color: #FDE047 !important;
     color: #7C2D12 !important;
-    padding: 2px 6px;
-    border-radius: 5px;
-    font-weight: 700;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    font-weight: 800 !important;
 }
 
 .boss-card {
@@ -300,25 +279,42 @@ html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
 h1, h2, h3 { color: #431407 !important; font-weight: 800 !important; }
 </style>""", unsafe_allow_html=True)
 
-# Top Bar
-col_h1, col_xp, col_lang = st.columns([3.5, 2, 1.2])
-with col_xp:
-    st.markdown(f"<div style='text-align: right; padding-top: 5px;'><span class='xp-badge'>⚡ {st.session_state.xp_points} XP</span></div>", unsafe_allow_html=True)
-with col_lang:
-    language = st.selectbox("🌐 Language", ["Hindi", "English"], label_visibility="collapsed")
+# --- TOP CORNER HEADER BAR (WITH SUKOON SOUND DECK AT TOP RIGHT) ---
+col_head_left, col_head_right = st.columns([2.5, 1.5])
 
-# --- SIDEBAR PERSISTENT CALMING AUDIO DECK ---
-with st.sidebar:
-    st.markdown("### 🎧 Sukoon Sound Deck")
-    st.caption("Music continues playing across pages until switched off!")
-    bg_sound = st.radio("Choose Ambient Music:", ["Off 🔇", "Calm Lofi Beats 🎵", "Soft Relaxing Rain 🌧️", "Deep Focus Drone 🧘"])
-    
-    if bg_sound == "Calm Lofi Beats 🎵":
-        st.components.v1.iframe("https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&loop=1", height=160)
-    elif bg_sound == "Soft Relaxing Rain 🌧️":
-        st.components.v1.iframe("https://www.youtube.com/embed/mPZkdNFkNps?autoplay=1&loop=1", height=160)
-    elif bg_sound == "Deep Focus Drone 🧘":
-        st.components.v1.iframe("https://www.youtube.com/embed/5qap5aO4i9A?autoplay=1&loop=1", height=160)
+with col_head_left:
+    col_xp, col_lang = st.columns([1, 1])
+    with col_xp:
+        st.markdown(f"<span class='xp-badge'>⚡ {st.session_state.xp_points} XP</span>", unsafe_allow_html=True)
+    with col_lang:
+        language = st.selectbox("🌐 Language", ["Hindi", "English"], label_visibility="collapsed")
+
+with col_head_right:
+    with st.expander("🎧 Sukoon Ambient Deck (Corner Audio)", expanded=False):
+        bg_sound = st.radio("Choose Music:", [
+            "Off 🔇", 
+            "Lofi Study Beats 🎵", 
+            "Soft Rain 🌧️", 
+            "Relaxing Piano 🎹", 
+            "Forest Birds 🍃", 
+            "Ocean Waves 🌊", 
+            "Deep Alpha Meditation 🧘"
+        ], label_visibility="collapsed")
+        
+        if bg_sound == "Lofi Study Beats 🎵":
+            st.components.v1.iframe("https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&loop=1", height=120)
+        elif bg_sound == "Soft Rain 🌧️":
+            st.components.v1.iframe("https://www.youtube.com/embed/mPZkdNFkNps?autoplay=1&loop=1", height=120)
+        elif bg_sound == "Relaxing Piano 🎹":
+            st.components.v1.iframe("https://www.youtube.com/embed/WJ3-F02-F_Y?autoplay=1&loop=1", height=120)
+        elif bg_sound == "Forest Birds 🍃":
+            st.components.v1.iframe("https://www.youtube.com/embed/xNN7iTA57jM?autoplay=1&loop=1", height=120)
+        elif bg_sound == "Ocean Waves 🌊":
+            st.components.v1.iframe("https://www.youtube.com/embed/bn9F19Hi1Lk?autoplay=1&loop=1", height=120)
+        elif bg_sound == "Deep Alpha Meditation 🧘":
+            st.components.v1.iframe("https://www.youtube.com/embed/5qap5aO4i9A?autoplay=1&loop=1", height=120)
+
+st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-color: #FDBA74;'>", unsafe_allow_html=True)
 
 # --- HOME PAGE ---
 if st.session_state.page == "Home":
@@ -356,7 +352,7 @@ if st.session_state.page == "Home":
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("🎰 XP Betting Arena", use_container_width=True):
+        if st.button("🎰 XP Betting Arena (5 Qs)", use_container_width=True):
             st.session_state.page = "XPBetting"
             st.rerun()
         if st.button("🎮 AI Boss Battle (5 Qs)", use_container_width=True):
@@ -390,7 +386,7 @@ if st.session_state.page == "Home":
         if st.button("🧠 Mnemonic Trick Maker", use_container_width=True):
             st.session_state.page = "Mnemonic"
             st.rerun()
-        if st.button("🕹️ Dopamine Arcade", use_container_width=True):
+        if st.button("🕹️ Brain Refresher Arcade", use_container_width=True):
             st.session_state.page = "Arcade"
             st.rerun()
         if st.button("🎭 BrainRot Explainer", use_container_width=True):
@@ -407,6 +403,115 @@ if st.session_state.page == "Home":
         if st.button("🎯 Exam Predictor Paper", use_container_width=True):
             st.session_state.page = "GuessPaper"
             st.rerun()
+
+# --- 🎰 XP BETTING ARENA PAGE (5 QUESTIONS + INSTANT EXPLANATION) ---
+elif st.session_state.page == "XPBetting":
+    if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
+    st.subheader("🎰 XP Betting Arena: 5-Question Challenge")
+    
+    st.markdown(f"<div class='aesthetic-card'><b>Your Current Balance:</b> ⚡ <b>{st.session_state.xp_points} XP</b></div>", unsafe_allow_html=True)
+    bet_amount = st.slider("Select XP to Bet:", min_value=10, max_value=max(10, st.session_state.xp_points), step=10)
+    topic = st.text_input("Subject/Chapter for 5-Question Bet Challenge:")
+
+    if st.button("Place Bet & Generate 5 Questions 🎯"):
+        if topic and st.session_state.xp_points >= bet_amount:
+            with st.spinner("Generating 5 High-Stakes Questions..."):
+                prompt = f"Create 5 MCQ questions on {topic}. Format strictly as a JSON array of 5 objects, each having keys: 'question', 'options' (list of 4 strings), 'correct_index' (0,1,2,3), 'explanation' (1 short sentence why it is correct)."
+                res = get_ai_answer(prompt, language)
+                try:
+                    clean_json = res[res.find('['):res.rfind(']')+1]
+                    st.session_state.bet_5q = json.loads(clean_json)
+                    st.session_state.current_bet = bet_amount
+                    st.session_state.submitted_bet = False
+                except Exception:
+                    st.session_state.bet_5q = [
+                        {"question": f"Q{i+1}: Core concept question on {topic}?", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Basic core principle."} for i in range(5)
+                    ]
+                    st.session_state.current_bet = bet_amount
+                    st.session_state.submitted_bet = False
+        else: st.error("Please enter a topic and ensure you have enough XP!")
+
+    if 'bet_5q' in st.session_state and st.session_state.bet_5q:
+        st.markdown(f"### 🔥 Active Bet: {st.session_state.current_bet} XP")
+        user_choices = []
+        for idx, q_item in enumerate(st.session_state.bet_5q):
+            st.markdown(f"<div class='aesthetic-card'><b>Q{idx+1}: {q_item['question']}</b></div>", unsafe_allow_html=True)
+            ans = st.radio(f"Select option for Q{idx+1}:", q_item['options'], key=f"bet_q_{idx}")
+            user_choices.append(q_item['options'].index(ans))
+        
+        if st.button("Submit Answers & Check Result 🚀"):
+            st.session_state.submitted_bet = True
+            st.session_state.user_bet_choices = user_choices
+
+        if st.session_state.get('submitted_bet', False):
+            st.markdown("---")
+            st.markdown("### 📊 Detailed Answer Breakdown:")
+            correct_cnt = 0
+            for idx, q_item in enumerate(st.session_state.bet_5q):
+                user_ans_idx = st.session_state.user_bet_choices[idx]
+                correct_idx = q_item['correct_index']
+                
+                if user_ans_idx == correct_idx:
+                    correct_cnt += 1
+                    st.success(f"✅ **Q{idx+1}: Correct!** You selected '{q_item['options'][user_ans_idx]}'. Explanation: {q_item.get('explanation', '')}")
+                else:
+                    st.error(f"❌ **Q{idx+1}: Incorrect!** You selected '{q_item['options'][user_ans_idx]}'. **Correct Answer:** '{q_item['options'][correct_idx]}'. Explanation: {q_item.get('explanation', '')}")
+            
+            if correct_cnt >= 3:
+                win_xp = st.session_state.current_bet * 2
+                st.session_state.xp_points += st.session_state.current_bet
+                st.balloons()
+                st.success(f"🎉 Great job! You scored {correct_cnt}/5! You won +{win_xp} XP!")
+            else:
+                st.session_state.xp_points -= st.session_state.current_bet
+                st.error(f"💀 You scored {correct_cnt}/5. You lost -{st.session_state.current_bet} XP!")
+            save_user_data()
+
+# --- 🎨 AI VISUAL CLASS STUDIO PAGE (TEXT & VISUAL FIX) ---
+elif st.session_state.page == "VisualClass":
+    if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
+    st.subheader("🎨 AI Visual Class Studio")
+    topic = st.text_input("Enter Concept (e.g. Photosynthesis, Newton's Laws, Human Heart):")
+    
+    if st.button("Generate Visual Class ✨"):
+        if topic:
+            with st.spinner("EduGenie is generating Visual Diagrams & Text Explanation..."):
+                prompt = f"Explain **{topic}** clearly in 2 distinct visual steps for a student. Include **important key points** in bold."
+                script = get_ai_answer(prompt, language)
+                
+                points = [f"Core Principle of {topic}", f"Working & Application of {topic}"]
+                imgs = generate_2_concept_images(topic, points)
+                
+                st.session_state.vid_topic = topic
+                st.session_state.vid_script = script
+                st.session_state.vid_imgs = imgs
+                st.session_state.xp_points += 10
+                save_user_data()
+        else: st.error("Please enter a topic!")
+
+    if 'vid_script' in st.session_state:
+        st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
+        st.markdown(f"<h2>🎨 Lesson: **{st.session_state.vid_topic}**</h2>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 16px; line-height: 1.7;'>{st.session_state.vid_script.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        render_voice_controls(st.session_state.vid_script, key_prefix="visual_class", language=language)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
+            if len(st.session_state.vid_imgs) > 0:
+                st.image(st.session_state.vid_imgs[0], caption=f"Visual Diagram 1: {st.session_state.vid_topic}", use_container_width=True)
+            st.markdown("<span class='step-badge'>VISUAL STEP 1</span>", unsafe_allow_html=True)
+            st.markdown(f"**Step 1 Visual Diagram Representation**")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
+            if len(st.session_state.vid_imgs) > 1:
+                st.image(st.session_state.vid_imgs[1], caption=f"Visual Diagram 2: {st.session_state.vid_topic}", use_container_width=True)
+            st.markdown("<span class='step-badge'>VISUAL STEP 2</span>", unsafe_allow_html=True)
+            st.markdown(f"**Step 2 Practical Process Diagram**")
+            st.markdown("</div>", unsafe_allow_html=True)
 
 # --- 🎮 AI BOSS FIGHT MODE PAGE (5 QUESTIONS AT ONCE) ---
 elif st.session_state.page == "BossFight":
@@ -481,52 +586,40 @@ elif st.session_state.page == "BossFight":
                 st.session_state.boss_5q = None
                 st.rerun()
 
-# --- 🎨 AI VISUAL CLASS PAGE ---
-elif st.session_state.page == "VisualClass":
+# --- 🕹️ REPLACED GAME: BRAIN REFRESHER WORD SCRAMBLE ---
+elif st.session_state.page == "Arcade":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
-    st.subheader("🎨 AI Visual Class Studio")
-    topic = st.text_input("Enter Concept (e.g. Photosynthesis, Newton's Laws, Black Hole):")
+    st.subheader("🧠 Brain Refresher: Quick Word Unscramble")
     
-    if st.button("Generate Visual Class ✨"):
-        if topic:
-            with st.spinner("EduGenie is generating Visual Diagrams & Script..."):
-                prompt = f"Explain {topic} in 2 precise step-by-step visual bullet points for a student. Step 1: Core Concept. Step 2: Main Working/Application."
-                script = get_ai_answer(prompt, language)
-                
-                raw_lines = [p.strip('- 1234567890.*').strip() for p in script.split('\n') if len(p.strip()) > 8]
-                points = raw_lines[:2] if len(raw_lines) >= 2 else [f"Basic principle of {topic}", f"Practical working of {topic}"]
-                
-                imgs = generate_2_concept_images(topic, points)
-                st.session_state.vid_topic = topic
-                st.session_state.vid_script = script
-                st.session_state.vid_points = points
-                st.session_state.vid_imgs = imgs
-                st.session_state.xp_points += 10
-                save_user_data()
-        else: st.error("Please enter a topic!")
-
-    if 'vid_script' in st.session_state:
-        st.markdown(f"<div class='boss-card'>", unsafe_allow_html=True)
-        st.markdown(f"<h2>🎨 Visual Lesson: {st.session_state.vid_topic}</h2>", unsafe_allow_html=True)
-        render_voice_controls(st.session_state.vid_script, key_prefix="visual_class", language=language)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
-            if len(st.session_state.vid_imgs) > 0:
-                st.image(st.session_state.vid_imgs[0], caption=f"Visual Step 1: {st.session_state.vid_topic}", use_container_width=True)
-            st.markdown("<span class='step-badge'>STEP 1</span>", unsafe_allow_html=True)
-            st.markdown(f"<p style='font-weight: 600;'>{st.session_state.vid_points[0]}</p>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-            
-        with col2:
-            st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
-            if len(st.session_state.vid_imgs) > 1:
-                st.image(st.session_state.vid_imgs[1], caption=f"Visual Step 2: {st.session_state.vid_topic}", use_container_width=True)
-            st.markdown("<span class='step-badge'>STEP 2</span>", unsafe_allow_html=True)
-            st.markdown(f"<p style='font-weight: 600;'>{st.session_state.vid_points[1] if len(st.session_state.vid_points) > 1 else 'Key Application'}</p>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+    WORDS = [
+        {"scrambled": "S I C Y H P S", "original": "PHYSICS", "hint": "Study of matter and energy"},
+        {"scrambled": "Y R T S I M E H C", "original": "CHEMISTRY", "hint": "Study of elements and reactions"},
+        {"scrambled": "I Y O L O G B", "original": "BIOLOGY", "hint": "Study of living organisms"},
+        {"scrambled": "A T E M A H T C I M S", "original": "MATHEMATICS", "hint": "Study of numbers and equations"},
+        {"scrambled": "O N T O R U E N", "original": "ELECTRON", "hint": "Negatively charged subatomic particle"}
+    ]
+    
+    if 'scramble_idx' not in st.session_state:
+        st.session_state.scramble_idx = random.randint(0, len(WORDS)-1)
+    
+    current_word = WORDS[st.session_state.scramble_idx]
+    
+    st.markdown("<div class='aesthetic-card' style='text-align: center;'>", unsafe_allow_html=True)
+    st.markdown(f"## 🔤 Unscramble: **{current_word['scrambled']}**")
+    st.markdown(f"💡 **Hint:** {current_word['hint']}")
+    
+    guess = st.text_input("Type your answer here:").strip().upper()
+    
+    if st.button("Check Word 🚀"):
+        if guess == current_word['original']:
+            st.balloons()
+            st.success("🎉 Correct Answer! +15 XP added!")
+            st.session_state.xp_points += 15
+            save_user_data()
+            st.session_state.scramble_idx = random.randint(0, len(WORDS)-1)
+        else:
+            st.error("❌ Wrong word! Try again!")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # --- 🔒 SECRET DIARY PAGE ---
 elif st.session_state.page == "Diary":
@@ -587,7 +680,7 @@ elif st.session_state.page == "Persona":
         if topic:
             with st.spinner("AI Partner is preparing..."):
                 p_style = "strict coaching teacher" if "Strict" in persona else ("cool backbencher senior using exam hacks" if "Cool" in persona else "caring K-Pop study idol")
-                prompt = f"Act as a {p_style}. Explain the topic '{topic}' clearly."
+                prompt = f"Act as a {p_style}. Explain the topic **{topic}** clearly with **highlighted key terms**."
                 res = get_ai_answer(prompt, language)
                 st.session_state.persona_res = res
         else: st.error("Please enter a topic!")
@@ -605,7 +698,7 @@ elif st.session_state.page == "Mnemonic":
     if st.button("Generate Memory Trick 🚀"):
         if topic:
             with st.spinner("Creating mnemonic..."):
-                prompt = f"Create a funny, unforgettable mnemonic story/acronym/rhyme to easily memorize: '{topic}'."
+                prompt = f"Create a funny, unforgettable mnemonic story/acronym/rhyme to easily memorize **{topic}**."
                 res = get_ai_answer(prompt, language)
                 st.session_state.mnem_res = res
         else: st.error("Enter topic or list!")
@@ -623,7 +716,7 @@ elif st.session_state.page == "GuessPaper":
     if st.button("Predict High-Yield Questions 🔮"):
         if subject:
             with st.spinner("Analyzing past exam patterns..."):
-                prompt = f"Act as an expert examiner. Predict top 5 most expected exam questions with detailed answers for '{subject}'."
+                prompt = f"Act as an expert examiner. Predict top 5 most expected exam questions with detailed answers for **{subject}**."
                 res = get_ai_answer(prompt, language)
                 st.session_state.guess_res = res
                 st.session_state.guess_topic = subject
@@ -636,52 +729,6 @@ elif st.session_state.page == "GuessPaper":
         with open(pdf_file, "rb") as f:
             st.download_button("📥 Download Guess Paper PDF", f, file_name=pdf_file, use_container_width=True)
 
-# --- 🎰 XP BETTING ARENA PAGE ---
-elif st.session_state.page == "XPBetting":
-    if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
-    st.subheader("🎰 XP Betting Arena: High-Risk Active Recall")
-    
-    st.markdown(f"<div class='aesthetic-card'><b>Your Available XP:</b> ⚡ {st.session_state.xp_points} XP</div>", unsafe_allow_html=True)
-    bet_amount = st.slider("Select XP to Bet:", min_value=10, max_value=max(10, st.session_state.xp_points), step=10)
-    topic = st.text_input("Subject for Betting Challenge:")
-
-    if st.button("Place Bet & Start Challenge 🎯"):
-        if topic and st.session_state.xp_points >= bet_amount:
-            with st.spinner("Generating High-Stakes Question..."):
-                prompt = f"Create 1 challenging MCQ question on {topic}. Format strictly as JSON with keys: 'question', 'options' (list of 4 strings), 'correct_index' (0,1,2,3)."
-                res = get_ai_answer(prompt, language)
-                try:
-                    clean_json = res[res.find('{'):res.rfind('}')+1]
-                    st.session_state.bet_q = json.loads(clean_json)
-                    st.session_state.current_bet = bet_amount
-                except Exception:
-                    st.session_state.bet_q = {
-                        "question": f"Core concept check for {topic}:",
-                        "options": ["Option A", "Option B", "Option C", "Option D"],
-                        "correct_index": 0
-                    }
-                    st.session_state.current_bet = bet_amount
-        else: st.error("Enter topic or check if you have enough XP!")
-
-    if 'bet_q' in st.session_state and st.session_state.bet_q:
-        bq = st.session_state.bet_q
-        st.markdown(f"<div class='aesthetic-card'><h3>🔥 Bet: {st.session_state.current_bet} XP</h3><p style='font-size: 18px;'>{bq['question']}</p></div>", unsafe_allow_html=True)
-        user_choice = st.radio("Pick your answer carefully:", bq['options'])
-        
-        if st.button("Submit Answer 💥"):
-            chosen_idx = bq['options'].index(user_choice)
-            if chosen_idx == bq['correct_index']:
-                win_xp = st.session_state.current_bet * 2
-                st.session_state.xp_points += st.session_state.current_bet
-                st.balloons()
-                st.success(f"🎉 Right Answer! You won +{win_xp} XP!")
-            else:
-                st.session_state.xp_points -= st.session_state.current_bet
-                st.error(f"❌ Wrong Answer! You lost -{st.session_state.current_bet} XP!")
-            save_user_data()
-            st.session_state.bet_q = None
-            st.rerun()
-
 # --- 🔄 REVERSE FEYNMAN AI PAGE ---
 elif st.session_state.page == "Feynman":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
@@ -692,7 +739,7 @@ elif st.session_state.page == "Feynman":
     if st.button("Explain to Chintu 🚀"):
         if topic and explanation:
             with st.spinner("Chintu is thinking..."):
-                f_prompt = f"Act as Chintu, a curious 10-year-old kid. A student is trying to teach you '{topic}': '{explanation}'. Reply enthusiastically and check if you understood."
+                f_prompt = f"Act as Chintu, a curious 10-year-old kid. A student is trying to teach you **{topic}**: '{explanation}'. Reply enthusiastically and highlight main points."
                 res = get_ai_answer(f_prompt, language)
                 st.session_state.feynman_res = res
                 st.session_state.xp_points += 15
@@ -713,44 +760,6 @@ elif st.session_state.page == "Fortune":
     st.markdown(f"<h2>{fortune_today}</h2>", unsafe_allow_html=True)
     st.balloons()
     st.markdown("</div>", unsafe_allow_html=True)
-
-# --- 🕹️ DOPAMINE MINI ARCADE PAGE ---
-elif st.session_state.page == "Arcade":
-    if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
-    st.subheader("🕹️ Dopamine Arcade: Tic-Tac-Toe ❌⭕")
-    
-    def check_winner(board):
-        wins = [(0,1,2), (3,4,5), (6,7,8), (0,3,6), (1,4,7), (2,5,8), (0,4,8), (2,4,6)]
-        for a, b, c in wins:
-            if board[a] == board[b] == board[c] and board[a] != "":
-                return board[a]
-        if "" not in board: return "Tie"
-        return None
-
-    board = st.session_state.ttt_board
-    winner = check_winner(board)
-
-    if winner:
-        if winner == "❌": st.success("🎉 You Win!")
-        elif winner == "⭕": st.error("🤖 AI Won!")
-        else: st.info("🤝 It's a Tie!")
-        if st.button("Reset Game 🔄"):
-            st.session_state.ttt_board = [""] * 9
-            st.rerun()
-    else:
-        grid_cols = st.columns(3)
-        for i in range(9):
-            with grid_cols[i % 3]:
-                label = board[i] if board[i] != "" else " "
-                if st.button(label, key=f"ttt_{i}", use_container_width=True):
-                    if board[i] == "":
-                        board[i] = "❌"
-                        empty_indices = [idx for idx, val in enumerate(board) if val == ""]
-                        if empty_indices:
-                            ai_choice = random.choice(empty_indices)
-                            board[ai_choice] = "⭕"
-                        st.session_state.ttt_board = board
-                        st.rerun()
 
 # --- DASHBOARD PAGE ---
 elif st.session_state.page == "Dashboard":
@@ -798,7 +807,7 @@ elif st.session_state.page == "BrainRot":
     if st.button("Explain in Meme Style 🔥"):
         if topic:
             with st.spinner("Generating..."):
-                prompt = f"Explain '{topic}' in style of {vibe}."
+                prompt = f"Explain **{topic}** in style of {vibe}. Use **bold words** for main terms."
                 res = get_ai_answer(prompt, language)
                 st.session_state.br_res = res
                 st.balloons()
@@ -817,7 +826,7 @@ elif st.session_state.page == "Survival":
     if st.button("Generate Survival Sheet 📄"):
         if subject:
             with st.spinner("Creating survival sheet..."):
-                prompt = f"Create a concise exam survival sheet for {subject} with Top 5 questions and formulas."
+                prompt = f"Create a concise exam survival sheet for **{subject}** with Top 5 questions and key formulas highlighted."
                 res = get_ai_answer(prompt, language)
                 st.session_state.surv_res = res
                 st.session_state.surv_topic = subject
@@ -839,7 +848,7 @@ elif st.session_state.page == "Shorts":
     if st.button("Generate Script & Hook 🔥"):
         if topic:
             with st.spinner("Writing script..."):
-                prompt = f"Write a catchy 30-second YouTube Short script on {topic} including a hook and Call to Action to subscribe to Anu ot7."
+                prompt = f"Write a catchy 30-second YouTube Short script on **{topic}** including a hook and Call to Action to subscribe to Anu ot7."
                 res = get_ai_answer(prompt, language)
                 st.session_state.shorts_res = res
         else: st.error("Enter topic!")
@@ -862,7 +871,7 @@ elif st.session_state.page == "Notes":
     if st.button("Create Magic Notes ✨"):
         if topic:
             with st.spinner("Creating notes..."):
-                notes = get_ai_answer(f"Make concise study notes on {topic} for {subject}. Include Headings, Key Points, Real Example, Memory Trick.", language)
+                notes = get_ai_answer(f"Make concise study notes on **{topic}** for {subject}. Highlight key concepts using bold text.", language)
                 st.session_state.notes_res = notes
                 st.session_state.notes_topic = topic
         else: st.error("Enter topic name!")
@@ -883,7 +892,7 @@ elif st.session_state.page == "Doubt":
     if st.button("Solve Doubt Now ⚡"):
         if doubt:
             with st.spinner("Solving..."):
-                answer = get_ai_answer(f"Solve this student doubt clearly step-by-step: {doubt}", language)
+                answer = get_ai_answer(f"Solve this student doubt clearly step-by-step: {doubt}. Highlight key steps in bold.", language)
                 st.session_state.doubt_res = answer
         else: st.error("Please enter your doubt!")
 
@@ -900,7 +909,7 @@ elif st.session_state.page == "Test":
     if st.button("Generate Practice Quiz 🎯"):
         if topic:
             with st.spinner("Generating Quiz..."):
-                test = get_ai_answer(f"Create 5 practice MCQs on {topic} with answers.", language)
+                test = get_ai_answer(f"Create 5 practice MCQs on **{topic}** with answers.", language)
                 st.session_state.test_res = test
         else: st.error("Please enter a topic!")
 
@@ -917,4 +926,4 @@ elif st.session_state.page == "Timer":
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
-st.caption("Made with ❤️ by Anugya | BrainBloom EduGenie v6.0 Ultimate 🌸")
+st.caption("Made with ❤️ by Anugya | BrainBloom EduGenie v7.0 Ultimate 🌸")
