@@ -73,6 +73,18 @@ client = Groq(api_key=groq_key) if groq_key else None
 
 LOGO_URL = "https://i.postimg.cc/WD8XXFXD/image.png"
 
+# --- HIGHLIGHT CONVERTER FUNCTION (PERFECT FIX) ---
+def apply_highlights(text):
+    if not text:
+        return ""
+    # Convert **bold text** into yellow highlighted <mark> HTML tag
+    highlighted = re.sub(
+        r'\*\*(.*?)\*\*', 
+        r'<mark style="background-color: #FDE047; color: #7C2D12; padding: 2px 7px; border-radius: 6px; font-weight: 800;">\1</mark>', 
+        text
+    )
+    return highlighted.replace('\n', '<br>')
+
 # --- CROPPED LOGO DISPLAY ---
 def display_logo(size=110):
     st.markdown(f"""
@@ -211,7 +223,7 @@ FORTUNES = [
     "🔮 Daily Prediction: Class topper aaj aapka score dekh kar chauknay wala hai. Keep Grinding! (+20 XP)"
 ]
 
-# --- VIBRANT & PEACH UI STYLING WITH HIGHLIGHTS ---
+# --- VIBRANT & PEACH UI STYLING ---
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -226,17 +238,8 @@ html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
     box-shadow: 0 8px 25px rgba(251, 146, 60, 0.12);
     margin-bottom: 18px;
     color: #2D1A0E !important;
-}
-
-/* Global Bright Yellow Highlight for Important Bold Terms */
-div[data-testid="stMarkdownContainer"] strong,
-div[data-testid="stMarkdownContainer"] b,
-.aesthetic-card strong, .aesthetic-card b {
-    background-color: #FDE047 !important;
-    color: #7C2D12 !important;
-    padding: 2px 7px !important;
-    border-radius: 6px !important;
-    font-weight: 800 !important;
+    font-size: 16px;
+    line-height: 1.8;
 }
 
 .boss-card {
@@ -279,7 +282,7 @@ div[data-testid="stMarkdownContainer"] b,
 h1, h2, h3 { color: #431407 !important; font-weight: 800 !important; }
 </style>""", unsafe_allow_html=True)
 
-# --- TOP CORNER HEADER BAR (WITH SUKOON SOUND DECK AT TOP RIGHT) ---
+# --- TOP CORNER HEADER BAR ---
 col_head_left, col_head_right = st.columns([2.5, 1.5])
 
 with col_head_left:
@@ -404,7 +407,24 @@ if st.session_state.page == "Home":
             st.session_state.page = "GuessPaper"
             st.rerun()
 
-# --- 🎰 XP BETTING ARENA PAGE (5 QUESTIONS + INSTANT EXPLANATION) ---
+# --- ❓ DOUBT SOLVER PAGE ---
+elif st.session_state.page == "Doubt":
+    if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
+    st.subheader("❓ AI Doubt Solver ⚡")
+    doubt = st.text_area("Ask any doubt or question:", height=120)
+    
+    if st.button("Solve Doubt Now ⚡"):
+        if doubt:
+            with st.spinner("Solving..."):
+                answer = get_ai_answer(f"Solve this student doubt clearly step-by-step: {doubt}. Highlight key terms using bold text like **term**.", language)
+                st.session_state.doubt_res = answer
+        else: st.error("Please enter your doubt!")
+
+    if 'doubt_res' in st.session_state:
+        render_voice_controls(st.session_state.doubt_res, key_prefix="doubt", language=language)
+        st.markdown(f"<div class='aesthetic-card'><b>💡 Solution:</b><br><br>{apply_highlights(st.session_state.doubt_res)}</div>", unsafe_allow_html=True)
+
+# --- 🎰 XP BETTING ARENA PAGE ---
 elif st.session_state.page == "XPBetting":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader("🎰 XP Betting Arena: 5-Question Challenge")
@@ -467,7 +487,7 @@ elif st.session_state.page == "XPBetting":
                 st.error(f"💀 You scored {correct_cnt}/5. You lost -{st.session_state.current_bet} XP!")
             save_user_data()
 
-# --- 🎨 AI VISUAL CLASS STUDIO PAGE (TEXT & VISUAL FIX) ---
+# --- 🎨 AI VISUAL CLASS STUDIO PAGE ---
 elif st.session_state.page == "VisualClass":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader("🎨 AI Visual Class Studio")
@@ -476,7 +496,7 @@ elif st.session_state.page == "VisualClass":
     if st.button("Generate Visual Class ✨"):
         if topic:
             with st.spinner("EduGenie is generating Visual Diagrams & Text Explanation..."):
-                prompt = f"Explain **{topic}** clearly in 2 distinct visual steps for a student. Include **important key points** in bold."
+                prompt = f"Explain **{topic}** clearly in 2 distinct visual steps for a student. Include **important key points** using bold like **key point**."
                 script = get_ai_answer(prompt, language)
                 
                 points = [f"Core Principle of {topic}", f"Working & Application of {topic}"]
@@ -492,7 +512,7 @@ elif st.session_state.page == "VisualClass":
     if 'vid_script' in st.session_state:
         st.markdown("<div class='aesthetic-card'>", unsafe_allow_html=True)
         st.markdown(f"<h2>🎨 Lesson: **{st.session_state.vid_topic}**</h2>", unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size: 16px; line-height: 1.7;'>{st.session_state.vid_script.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div>{apply_highlights(st.session_state.vid_script)}</div>", unsafe_allow_html=True)
         render_voice_controls(st.session_state.vid_script, key_prefix="visual_class", language=language)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -502,7 +522,7 @@ elif st.session_state.page == "VisualClass":
             if len(st.session_state.vid_imgs) > 0:
                 st.image(st.session_state.vid_imgs[0], caption=f"Visual Diagram 1: {st.session_state.vid_topic}", use_container_width=True)
             st.markdown("<span class='step-badge'>VISUAL STEP 1</span>", unsafe_allow_html=True)
-            st.markdown(f"**Step 1 Visual Diagram Representation**")
+            st.markdown("<b>Step 1 Visual Diagram Representation</b>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
             
         with col2:
@@ -510,10 +530,10 @@ elif st.session_state.page == "VisualClass":
             if len(st.session_state.vid_imgs) > 1:
                 st.image(st.session_state.vid_imgs[1], caption=f"Visual Diagram 2: {st.session_state.vid_topic}", use_container_width=True)
             st.markdown("<span class='step-badge'>VISUAL STEP 2</span>", unsafe_allow_html=True)
-            st.markdown(f"**Step 2 Practical Process Diagram**")
+            st.markdown("<b>Step 2 Practical Process Diagram</b>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-# --- 🎮 AI BOSS FIGHT MODE PAGE (5 QUESTIONS AT ONCE) ---
+# --- 🎮 AI BOSS FIGHT MODE PAGE ---
 elif st.session_state.page == "BossFight":
     if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
     st.subheader("🎮 AI Boss Battle Arena: Defeat Dr. Brain-Drain 👹")
@@ -680,14 +700,14 @@ elif st.session_state.page == "Persona":
         if topic:
             with st.spinner("AI Partner is preparing..."):
                 p_style = "strict coaching teacher" if "Strict" in persona else ("cool backbencher senior using exam hacks" if "Cool" in persona else "caring K-Pop study idol")
-                prompt = f"Act as a {p_style}. Explain the topic **{topic}** clearly with **highlighted key terms**."
+                prompt = f"Act as a {p_style}. Explain the topic **{topic}** clearly. Use bold text like **term** for key points."
                 res = get_ai_answer(prompt, language)
                 st.session_state.persona_res = res
         else: st.error("Please enter a topic!")
 
     if 'persona_res' in st.session_state:
         render_voice_controls(st.session_state.persona_res, key_prefix="persona", language=language)
-        st.markdown(f"<div class='aesthetic-card'>{st.session_state.persona_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'>{apply_highlights(st.session_state.persona_res)}</div>", unsafe_allow_html=True)
 
 # --- 🧠 MNEMONIC TRICK MAKER PAGE ---
 elif st.session_state.page == "Mnemonic":
@@ -698,14 +718,14 @@ elif st.session_state.page == "Mnemonic":
     if st.button("Generate Memory Trick 🚀"):
         if topic:
             with st.spinner("Creating mnemonic..."):
-                prompt = f"Create a funny, unforgettable mnemonic story/acronym/rhyme to easily memorize **{topic}**."
+                prompt = f"Create a funny, unforgettable mnemonic story/acronym/rhyme to easily memorize **{topic}**. Use bold like **term** for key parts."
                 res = get_ai_answer(prompt, language)
                 st.session_state.mnem_res = res
         else: st.error("Enter topic or list!")
 
     if 'mnem_res' in st.session_state:
         render_voice_controls(st.session_state.mnem_res, key_prefix="mnemonic", language=language)
-        st.markdown(f"<div class='aesthetic-card'>{st.session_state.mnem_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'>{apply_highlights(st.session_state.mnem_res)}</div>", unsafe_allow_html=True)
 
 # --- 🎯 EXAM PREDICTOR GUESS PAPER PAGE ---
 elif st.session_state.page == "GuessPaper":
@@ -716,7 +736,7 @@ elif st.session_state.page == "GuessPaper":
     if st.button("Predict High-Yield Questions 🔮"):
         if subject:
             with st.spinner("Analyzing past exam patterns..."):
-                prompt = f"Act as an expert examiner. Predict top 5 most expected exam questions with detailed answers for **{subject}**."
+                prompt = f"Act as an expert examiner. Predict top 5 most expected exam questions with detailed answers for **{subject}**. Use bold for key points."
                 res = get_ai_answer(prompt, language)
                 st.session_state.guess_res = res
                 st.session_state.guess_topic = subject
@@ -724,7 +744,7 @@ elif st.session_state.page == "GuessPaper":
 
     if 'guess_res' in st.session_state:
         render_voice_controls(st.session_state.guess_res, key_prefix="guesspaper", language=language)
-        st.markdown(f"<div class='aesthetic-card'>{st.session_state.guess_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'>{apply_highlights(st.session_state.guess_res)}</div>", unsafe_allow_html=True)
         pdf_file = create_pdf(st.session_state.guess_res, st.session_state.guess_topic)
         with open(pdf_file, "rb") as f:
             st.download_button("📥 Download Guess Paper PDF", f, file_name=pdf_file, use_container_width=True)
@@ -739,7 +759,7 @@ elif st.session_state.page == "Feynman":
     if st.button("Explain to Chintu 🚀"):
         if topic and explanation:
             with st.spinner("Chintu is thinking..."):
-                f_prompt = f"Act as Chintu, a curious 10-year-old kid. A student is trying to teach you **{topic}**: '{explanation}'. Reply enthusiastically and highlight main points."
+                f_prompt = f"Act as Chintu, a curious 10-year-old kid. A student is trying to teach you **{topic}**: '{explanation}'. Reply enthusiastically and use bold text like **term** for main points."
                 res = get_ai_answer(f_prompt, language)
                 st.session_state.feynman_res = res
                 st.session_state.xp_points += 15
@@ -747,7 +767,7 @@ elif st.session_state.page == "Feynman":
         else: st.error("Please enter both topic and explanation!")
 
     if 'feynman_res' in st.session_state:
-        st.markdown(f"<div class='aesthetic-card'><h3>🧒 Chintu's Reply:</h3><p style='font-size: 17px;'>{st.session_state.feynman_res.replace(chr(10), '<br>')}</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'><h3>🧒 Chintu's Reply:</h3>{apply_highlights(st.session_state.feynman_res)}</div>", unsafe_allow_html=True)
         render_voice_controls(st.session_state.feynman_res, key_prefix="chintu_voice", language=language)
 
 # --- 🔮 DAILY FORTUNE PAGE ---
@@ -815,7 +835,7 @@ elif st.session_state.page == "BrainRot":
 
     if 'br_res' in st.session_state:
         render_voice_controls(st.session_state.br_res, key_prefix="brainrot", language=language)
-        st.markdown(f"<div class='aesthetic-card'>{st.session_state.br_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'>{apply_highlights(st.session_state.br_res)}</div>", unsafe_allow_html=True)
 
 # --- ⚡ SURVIVAL KIT PAGE ---
 elif st.session_state.page == "Survival":
@@ -826,7 +846,7 @@ elif st.session_state.page == "Survival":
     if st.button("Generate Survival Sheet 📄"):
         if subject:
             with st.spinner("Creating survival sheet..."):
-                prompt = f"Create a concise exam survival sheet for **{subject}** with Top 5 questions and key formulas highlighted."
+                prompt = f"Create a concise exam survival sheet for **{subject}** with Top 5 questions and key formulas highlighted using bold text."
                 res = get_ai_answer(prompt, language)
                 st.session_state.surv_res = res
                 st.session_state.surv_topic = subject
@@ -834,7 +854,7 @@ elif st.session_state.page == "Survival":
 
     if 'surv_res' in st.session_state:
         render_voice_controls(st.session_state.surv_res, key_prefix="survival", language=language)
-        st.markdown(f"<div class='aesthetic-card'>{st.session_state.surv_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'>{apply_highlights(st.session_state.surv_res)}</div>", unsafe_allow_html=True)
         pdf_file = create_pdf(st.session_state.surv_res, st.session_state.surv_topic)
         with open(pdf_file, "rb") as f:
             st.download_button("📥 Download PDF Survival Sheet", f, file_name=pdf_file, use_container_width=True)
@@ -848,14 +868,14 @@ elif st.session_state.page == "Shorts":
     if st.button("Generate Script & Hook 🔥"):
         if topic:
             with st.spinner("Writing script..."):
-                prompt = f"Write a catchy 30-second YouTube Short script on **{topic}** including a hook and Call to Action to subscribe to Anu ot7."
+                prompt = f"Write a catchy 30-second YouTube Short script on **{topic}** including a hook and Call to Action to subscribe to Anu ot7. Use bold text for key words."
                 res = get_ai_answer(prompt, language)
                 st.session_state.shorts_res = res
         else: st.error("Enter topic!")
 
     if 'shorts_res' in st.session_state:
         render_voice_controls(st.session_state.shorts_res, key_prefix="shorts", language=language)
-        st.markdown(f"<div class='aesthetic-card'>{st.session_state.shorts_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'>{apply_highlights(st.session_state.shorts_res)}</div>", unsafe_allow_html=True)
 
 # --- 📝 MAGIC NOTES PAGE ---
 elif st.session_state.page == "Notes":
@@ -871,34 +891,17 @@ elif st.session_state.page == "Notes":
     if st.button("Create Magic Notes ✨"):
         if topic:
             with st.spinner("Creating notes..."):
-                notes = get_ai_answer(f"Make concise study notes on **{topic}** for {subject}. Highlight key concepts using bold text.", language)
+                notes = get_ai_answer(f"Make concise study notes on **{topic}** for {subject}. Highlight key concepts using bold text like **term**.", language)
                 st.session_state.notes_res = notes
                 st.session_state.notes_topic = topic
         else: st.error("Enter topic name!")
 
     if 'notes_res' in st.session_state:
         render_voice_controls(st.session_state.notes_res, key_prefix="notes", language=language)
-        st.markdown(f"<div class='aesthetic-card'>{st.session_state.notes_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'>{apply_highlights(st.session_state.notes_res)}</div>", unsafe_allow_html=True)
         pdf_file = create_pdf(st.session_state.notes_res, st.session_state.notes_topic)
         with open(pdf_file, "rb") as f:
             st.download_button("📥 Download PDF Notes", f, file_name=pdf_file, use_container_width=True)
-
-# --- ❓ DOUBT SOLVER PAGE ---
-elif st.session_state.page == "Doubt":
-    if st.button("🏠 Back to Home"): st.session_state.page = "Home"; st.rerun()
-    st.subheader("❓ AI Doubt Solver ⚡")
-    doubt = st.text_area("Ask any doubt or question:", height=120)
-    
-    if st.button("Solve Doubt Now ⚡"):
-        if doubt:
-            with st.spinner("Solving..."):
-                answer = get_ai_answer(f"Solve this student doubt clearly step-by-step: {doubt}. Highlight key steps in bold.", language)
-                st.session_state.doubt_res = answer
-        else: st.error("Please enter your doubt!")
-
-    if 'doubt_res' in st.session_state:
-        render_voice_controls(st.session_state.doubt_res, key_prefix="doubt", language=language)
-        st.markdown(f"<div class='aesthetic-card'><b>💡 Solution:</b><br><br>{st.session_state.doubt_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
 
 # --- 📝 TEST SERIES PAGE ---
 elif st.session_state.page == "Test":
@@ -909,13 +912,13 @@ elif st.session_state.page == "Test":
     if st.button("Generate Practice Quiz 🎯"):
         if topic:
             with st.spinner("Generating Quiz..."):
-                test = get_ai_answer(f"Create 5 practice MCQs on **{topic}** with answers.", language)
+                test = get_ai_answer(f"Create 5 practice MCQs on **{topic}** with answers. Use bold text like **term** for key headings.", language)
                 st.session_state.test_res = test
         else: st.error("Please enter a topic!")
 
     if 'test_res' in st.session_state:
         render_voice_controls(st.session_state.test_res, key_prefix="test", language=language)
-        st.markdown(f"<div class='aesthetic-card'>{st.session_state.test_res.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aesthetic-card'>{apply_highlights(st.session_state.test_res)}</div>", unsafe_allow_html=True)
 
 # --- ⏰ FOCUS TIMER PAGE ---
 elif st.session_state.page == "Timer":
@@ -926,4 +929,4 @@ elif st.session_state.page == "Timer":
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
-st.caption("Made with ❤️ by Anugya | BrainBloom EduGenie v7.0 Ultimate 🌸")
+st.caption("Made with ❤️ by Anugya | BrainBloom EduGenie v7.1 Ultimate 🌸")
